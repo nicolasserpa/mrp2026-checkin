@@ -1,0 +1,6 @@
+out/
+*.apk
+*.jks
+*.keystore
+.env
+libs/*.jar
