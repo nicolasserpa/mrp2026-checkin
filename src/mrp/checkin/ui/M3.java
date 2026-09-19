@@ -73,6 +73,18 @@ public final class M3 {
         return (int) (context.getResources().getDisplayMetrics().density * n);
     }
 
+    // ---- Motion ------------------------------------------------------------
+    /** True se o sistema permite animações (Settings "remover animações" = 0). */
+    public static boolean motionEnabled(Context context) {
+        try {
+            return android.provider.Settings.Global.getFloat(
+                    context.getContentResolver(),
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f;
+        } catch (Exception ignored) {
+            return true;
+        }
+    }
+
     // ---- Drawables --------------------------------------------------------
     public static GradientDrawable rounded(int color, float radiusDp, Context context) {
         GradientDrawable g = new GradientDrawable();

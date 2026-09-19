@@ -5,6 +5,8 @@ import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -142,7 +144,29 @@ public final class ResultSheet {
     }
 
     private void showSuccessBlock(boolean visible) {
-        successBlock.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (visible) {
+            successBlock.setVisibility(View.VISIBLE);
+            if (M3.motionEnabled(successBlock.getContext())) {
+                successBlock.setScaleX(0.6f);
+                successBlock.setScaleY(0.6f);
+                successBlock.setAlpha(0f);
+                successBlock.animate()
+                        .scaleX(1f).scaleY(1f).alpha(1f)
+                        .setDuration(240)
+                        .setInterpolator(new OvershootInterpolator(1.2f))
+                        .start();
+            } else {
+                successBlock.setScaleX(1f);
+                successBlock.setScaleY(1f);
+                successBlock.setAlpha(1f);
+            }
+        } else {
+            successBlock.animate().cancel();
+            successBlock.setVisibility(View.GONE);
+            successBlock.setScaleX(1f);
+            successBlock.setScaleY(1f);
+            successBlock.setAlpha(1f);
+        }
     }
 
     public void showParticipant(String name, String team, String role) {
@@ -217,11 +241,37 @@ public final class ResultSheet {
     }
 
     public void showIdle() {
-        root.setVisibility(View.GONE);
+        root.animate().cancel();
+        if (isVisible() && M3.motionEnabled(root.getContext())) {
+            root.animate().alpha(0f).setDuration(140)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            root.setVisibility(View.GONE);
+                        }
+                    })
+                    .start();
+        } else {
+            root.setVisibility(View.GONE);
+            root.setAlpha(1f);
+        }
     }
 
     public void show() {
         root.setVisibility(View.VISIBLE);
+        root.animate().cancel();
+        if (M3.motionEnabled(root.getContext())) {
+            root.setAlpha(0f);
+            root.setTranslationY(M3.dp(root.getContext(), 24));
+            root.animate().alpha(1f).translationY(0f)
+                    .setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+        } else {
+            root.setAlpha(1f);
+            root.setTranslationY(0f);
+        }
     }
 
     public boolean isVisible() {

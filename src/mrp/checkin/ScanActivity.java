@@ -308,7 +308,57 @@ public class ScanActivity extends Activity {
 
     private void updateTorchVisibility() {
         boolean sheetVisible = resultSheet != null && resultSheet.isVisible();
-        torchFloat.setVisibility(sheetVisible ? View.GONE : View.VISIBLE);
+        boolean armed = torchFloat.isEnabled();
+        animateTorch(!sheetVisible, armed);
+    }
+
+    private void animateTorch(boolean visible, boolean armed) {
+        float targetAlpha = armed ? 1f : 0.4f;
+        torchFloat.animate().cancel();
+        if (!M3.motionEnabled(this)) {
+            torchFloat.setVisibility(visible ? View.VISIBLE : View.GONE);
+            torchFloat.setAlpha(visible ? targetAlpha : 0f);
+            return;
+        }
+        if (visible) {
+            torchFloat.setVisibility(View.VISIBLE);
+            torchFloat.setAlpha(0f);
+            torchFloat.animate().alpha(targetAlpha).setDuration(150).start();
+        } else {
+            if (torchFloat.getVisibility() == View.GONE) {
+                return;
+            }
+            torchFloat.animate().alpha(0f).setDuration(120)
+                    .withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            torchFloat.setVisibility(View.GONE);
+                        }
+                    })
+                    .start();
+        }
+    }
+
+    private void pulseViewfinder() {
+        viewfinder.animate().cancel();
+        if (!M3.motionEnabled(this)) {
+            viewfinder.setScaleX(1f);
+            viewfinder.setScaleY(1f);
+            return;
+        }
+        viewfinder.setScaleX(1f);
+        viewfinder.setScaleY(1f);
+        viewfinder.setAlpha(0.6f);
+        viewfinder.animate().scaleX(1.06f).scaleY(1.06f).alpha(1f)
+                .setDuration(120)
+                .withEndAction(new Runnable() {
+                    @Override
+                    public void run() {
+                        viewfinder.animate().scaleX(1f).scaleY(1f)
+                                .setDuration(120).start();
+                    }
+                })
+                .start();
     }
 
     private void requestCameraPermission() {
@@ -414,6 +464,7 @@ public class ScanActivity extends Activity {
         qrText = text;
         presenceJson = null;
         engine.pauseScanning();
+        pulseViewfinder();
         phase = ScanPhase.VERIFYING;
         retryTarget = RetryTarget.NONE;
         resultSheet.setWaiting("Verificando QR…");
