@@ -24,6 +24,10 @@ public final class ApiClient {
         void onResult(Result result);
     }
 
+    public enum ErrorKind {
+        NONE, NETWORK, AUTH, THROTTLE, INVALID, SERVER
+    }
+
     public static final class Result {
         public final boolean ok;
         public final int status;
@@ -46,12 +50,46 @@ public final class ApiClient {
             }
             return null;
         }
+
+        /** Classifica a falha para a UI decidir a mensagem certa (rede ≠ QR inválido). */
+        public ErrorKind errorKind() {
+            if (ok) {
+                return ErrorKind.NONE;
+            }
+            if (status == 401) {
+                return ErrorKind.AUTH;
+            }
+            if (status == 429) {
+                return ErrorKind.THROTTLE;
+            }
+            if (status == 0) {
+                return ErrorKind.NETWORK;
+            }
+            if (status >= 500) {
+                return ErrorKind.SERVER;
+            }
+            return ErrorKind.INVALID;
+        }
+
+        /** Falhas que faz sentido tentar de novo sem reescanear (reusa o QR em memória). */
+        public boolean retryable() {
+            ErrorKind kind = errorKind();
+            return kind == ErrorKind.NETWORK || kind == ErrorKind.THROTTLE
+                    || kind == ErrorKind.SERVER;
+        }
     }
 
     private static final int CONNECT_TIMEOUT_MS = 3000;
     private static final int READ_TIMEOUT_MS = 5000;
     private static final ExecutorService EXEC = Executors.newFixedThreadPool(2);
-    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static volatile Handler mainInstance;
+
+    private static Handler mainHandler() {
+        if (mainInstance == null) {
+            mainInstance = new Handler(Looper.getMainLooper());
+        }
+        return mainInstance;
+    }
 
     private final TokenStore store;
 
@@ -74,7 +112,7 @@ public final class ApiClient {
             @Override
             public void run() {
                 final Result result = execute(method, base, path, payload, auth);
-                MAIN.post(new Runnable() {
+                mainHandler().post(new Runnable() {
                     @Override
                     public void run() {
                         callback.onResult(result);

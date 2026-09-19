@@ -21,6 +21,7 @@ src/mrp/checkin/
   CheckActivity       checklist manual de conformidade (whitelist fixa, espelha o backend)
   SettingsActivity    endpoint da API, teste de /health, troca de usuário
   core/TokenStore     SharedPreferences MODE_PRIVATE (jwt + endpoint + operador)
+  core/CrashSink      crash logger local (filesDir/crash.log, 64KB, sem PII, sem rede)
   net/ApiClient       HttpURLConnection + org.json; callback no main thread
   net/EndpointResolver
   scan/CameraEngine   Camera2: preview + ImageReader + sessão + torch (CaptureRequest)
@@ -71,6 +72,26 @@ SCANNING -> decodificou -> VERIFYING -> verify?
 4. **Timeouts rígidos + fora da UI thread.** `setConnectTimeout(3000)` e
    `setReadTimeout(5000)`; toda chamada roda em `ExecutorService`; callback devolvido via
    `Handler(Looper.getMainLooper())`. Nunca travar a UI.
+5. **`--target-sdk-version 36` no build (AGENTS: Play Protect "app feito para versão
+   antiga").** O Android 16/SDK 36 roda edge-to-edge: `ScanActivity` aplica os insets de
+   status no header via `OnApplyWindowInsetsListener` (padding top dinâmico) e desloca o
+   `hintView` junto — o header nunca fica escondido.
+6. **Gate de permissão de câmera no `CameraEngine`.** `onSurfaceTextureAvailable` não
+   abre mais a câmera sem permissão: o engine só abre com `setCameraPermission(true)`
+   (setado em `requestCameraPermission`, `onRequestPermissionsResult` grant e `onResume`).
+   Negação → `ResultSheet` com erro + dialog "Abrir Ajustes"
+   (`ACTION_APPLICATION_DETAILS_SETTINGS`). `SecurityException` tratado antes do catch
+   genérico — sem Toast prematuro do BO 2.
+7. **CrashSink (BO 3, log sem logcat).** `Thread.setDefaultUncaughtExceptionHandler`
+   anexa thread+stacktrace em `filesDir/crash.log` (append, 64KB truncando do início),
+   com cascade para o handler anterior; `MainActivity`/`ScanActivity` mostram
+   `AlertDialog` com "Copiar"/"Entendi" (limpa o log) na próxima execução. Sem PII e sem
+   envio de rede — diagnostica crash de câmera pós-permissão no aparelho real.
+8. **`configureTransform()` corrigido (BO 4, preview 90°).** Rotações agora usam
+   `rotation = (sensorOrientation - displayRotationDeg + 360) % 360` com `bufferRect`
+   CONDICIONAL (`width/height` trocados só quando `rotation % 180 != 0`) antes do
+   `setRectToRect(FILL)` + scale cover centrado + `postRotate`. Ajuste fino de
+   0/180 graus pode ainda ser necessário em aparelho real (ver TODO §6).
 
 ## 5. Segurança operacional (LGPD / evento)
 
@@ -79,7 +100,7 @@ SCANNING -> decodificou -> VERIFYING -> verify?
   por aparelho (`AuditLog` grava `actor_user` por check-in).
 - **Storage**: token em `SharedPreferences` MODE_PRIVATE; `allowBackup=false`. Sem PII
   persistido (QR decodificado fica só em memória até o verify).
-- **Runbook do dia**: servidor em `http://192.168.0.10:8000`; `LAN_INSECURE=1`;
+- **Runbook do dia**: servidor em `http://192.168.0.30:8000` (confirmar IP via `ip addr` — DHCP muda; em produção usar reserva estática no roteador); `LAN_INSECURE=1`;
   distribuir `mrp-checkin-release.apk` aos fiscais; keystore + credenciais em `~/.keys/`.
 
 ## 6. TODO (validar no aparelho real)

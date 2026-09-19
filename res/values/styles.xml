@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MRP" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/mrp_primary</item>
+        <item name="android:colorPrimaryDark">@color/mrp_on_primary_container</item>
+        <item name="android:colorAccent">@color/mrp_primary</item>
+        <item name="android:windowBackground">@color/mrp_surface</item>
+        <item name="android:navigationBarColor">@color/mrp_surface</item>
+        <item name="android:statusBarColor">@color/mrp_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

@@ -2,11 +2,12 @@ package mrp.checkin.ui;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 public final class ResultSheet {
@@ -20,55 +21,79 @@ public final class ResultSheet {
 
     private final LinearLayout root;
     private final TextView badge;
+    private final LinearLayout successBlock;
     private final TextView title;
     private final TextView row1Label;
     private final TextView row1Value;
     private final TextView row2Label;
     private final TextView row2Value;
     private final TextView status;
+    private final ProgressBar progress;
     private final Button presenceButton;
     private final Button conformityButton;
     private final Button rescanButton;
 
     public ResultSheet(Context context, Actions actions) {
-        root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(context, 20), dp(context, 20), dp(context, 20), dp(context, 20));
-        root.setBackgroundColor(Color.WHITE);
+        root = M3.sheet(context);
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                int bottom = insets.getSystemWindowInsetBottom();
+                v.setPadding(M3.dp(context, 20), M3.dp(context, 20),
+                        M3.dp(context, 20), M3.dp(context, 20) + bottom);
+                return insets;
+            }
+        });
 
         badge = new TextView(context);
-        badge.setTextSize(15);
-        badge.setTypeface(null, Typeface.BOLD);
-        badge.setPadding(0, 0, 0, dp(context, 4));
-        root.addView(badge);
+        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        badgeLp.gravity = Gravity.CENTER_HORIZONTAL;
+        badgeLp.bottomMargin = M3.dp(context, 8);
+        root.addView(badge, badgeLp);
+
+        successBlock = M3.successBlock(context);
+        LinearLayout.LayoutParams successLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        successLp.bottomMargin = M3.dp(context, 14);
+        successBlock.setVisibility(View.GONE);
+        root.addView(successBlock, successLp);
 
         title = new TextView(context);
         title.setTextSize(26);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setPadding(0, 0, 0, dp(context, 10));
+        title.setTextColor(M3.ON_SURFACE);
+        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setPadding(0, 0, 0, M3.dp(context, 10));
         root.addView(title);
 
-        row1Label = sectionLabel(context, "Equipe");
+        progress = M3.spinner(context);
+        progress.setPadding(0, M3.dp(context, 6), 0, M3.dp(context, 6));
+        progress.setVisibility(View.GONE);
+        root.addView(progress, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        row1Label = M3.label(context, "Equipe");
         root.addView(row1Label);
         row1Value = new TextView(context);
         row1Value.setTextSize(18);
+        row1Value.setTextColor(M3.ON_SURFACE);
+        row1Value.setPadding(0, 0, 0, M3.dp(context, 8));
         root.addView(row1Value);
 
-        row2Label = sectionLabel(context, "Conformidade");
+        row2Label = M3.label(context, "Conformidade");
         root.addView(row2Label);
         row2Value = new TextView(context);
         row2Value.setTextSize(18);
+        row2Value.setTextColor(M3.ON_SURFACE);
         root.addView(row2Value);
 
         status = new TextView(context);
-        status.setTextSize(17);
-        status.setTypeface(null, Typeface.BOLD);
+        status.setTextSize(16);
         status.setGravity(Gravity.CENTER);
-        status.setPadding(0, dp(context, 14), 0, dp(context, 14));
+        status.setPadding(0, M3.dp(context, 14), 0, M3.dp(context, 14));
         root.addView(status);
 
-        presenceButton = new Button(context);
-        presenceButton.setText("Registrar presença");
+        presenceButton = M3.filledButton(context, "Registrar presença");
         presenceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -77,8 +102,7 @@ public final class ResultSheet {
         });
         root.addView(presenceButton);
 
-        conformityButton = new Button(context);
-        conformityButton.setText("Conformidade técnica");
+        conformityButton = M3.filledButton(context, "Conformidade técnica");
         conformityButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,8 +111,7 @@ public final class ResultSheet {
         });
         root.addView(conformityButton);
 
-        rescanButton = new Button(context);
-        rescanButton.setText("Escanear novamente");
+        rescanButton = M3.tonalButton(context, "Escanear novamente");
         rescanButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -102,72 +125,91 @@ public final class ResultSheet {
         return root;
     }
 
+    /** Texto e estilo do botão reserva (escaneia de novo ou tenta de novo). */
+    public void setRescanLabel(String label, boolean primary) {
+        rescanButton.setText(label);
+        if (primary) {
+            rescanButton.setBackground(M3.ripple(M3.RIPPLE_ON_PRIMARY,
+                    M3.rounded(M3.PRIMARY, M3.SHAPE_PILL, rescanButton.getContext())));
+            rescanButton.setTextColor(M3.ON_PRIMARY);
+        } else {
+            rescanButton.setBackground(M3.ripple(M3.RIPPLE_ON_CONTAINER,
+                    M3.rounded(M3.SECONDARY_CONTAINER, M3.SHAPE_PILL,
+                            rescanButton.getContext())));
+            rescanButton.setTextColor(M3.ON_SECONDARY_CONTAINER);
+        }
+        rescanButton.requestLayout();
+    }
+
+    private void showSuccessBlock(boolean visible) {
+        successBlock.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
     public void showParticipant(String name, String team, String role) {
-        badge.setText("Participante confirmado");
-        badge.setTextColor(Color.rgb(0, 130, 0));
+        setBadge("Participante confirmado", M3.SUCCESS_CONTAINER, M3.ON_SUCCESS_CONTAINER);
+        showSuccessBlock(true);
         title.setText(name);
         row1Label.setText("Equipe");
         row1Value.setText(team);
         row2Label.setText("Função");
         row2Value.setText("Líder".equals(role) ? "Líder" : "Integrante");
-        row2Label.setVisibility(View.VISIBLE);
-        row2Value.setVisibility(View.VISIBLE);
+        showRows(true);
+        progress.setVisibility(View.GONE);
         presenceButton.setVisibility(View.VISIBLE);
         conformityButton.setVisibility(View.GONE);
-        status.setVisibility(View.VISIBLE);
-        status.setText("");
+        rescanButton.setVisibility(View.VISIBLE);
+        setRescanLabel("Escanear próximo", false);
+        clearStatus();
     }
 
     public void showVehicle(String name, String team, String conformityStatus) {
-        badge.setText("Veículo confirmado");
-        badge.setTextColor(Color.rgb(0, 130, 0));
+        setBadge("Veículo confirmado", M3.SUCCESS_CONTAINER, M3.ON_SUCCESS_CONTAINER);
+        showSuccessBlock(true);
         title.setText(name);
         row1Label.setText("Equipe");
         row1Value.setText(team);
         row2Label.setText("Conformidade");
         row2Value.setText(conformityLabel(conformityStatus));
-        row2Label.setVisibility(View.VISIBLE);
-        row2Value.setVisibility(View.VISIBLE);
+        showRows(true);
+        progress.setVisibility(View.GONE);
         presenceButton.setVisibility(View.GONE);
         conformityButton.setVisibility(View.VISIBLE);
-        status.setVisibility(View.GONE);
+        rescanButton.setVisibility(View.VISIBLE);
+        setRescanLabel("Escanear próximo", false);
+        clearStatus();
     }
 
     public void setWaiting(String message) {
-        badge.setText("Verificando QR…");
-        badge.setTextColor(Color.rgb(0, 0, 0));
+        setBadge("Verificando", M3.SURFACE_VARIANT, M3.ON_SURFACE_VARIANT);
+        showSuccessBlock(false);
         title.setText("");
-        row1Label.setVisibility(View.GONE);
-        row1Value.setVisibility(View.GONE);
-        row2Label.setVisibility(View.GONE);
-        row2Value.setVisibility(View.GONE);
+        showRows(false);
+        progress.setVisibility(View.VISIBLE);
+        status.setVisibility(View.GONE);
         presenceButton.setVisibility(View.GONE);
         conformityButton.setVisibility(View.GONE);
-        status.setVisibility(View.VISIBLE);
-        status.setText(message);
-        status.setTextColor(Color.rgb(0, 0, 0));
         rescanButton.setVisibility(View.GONE);
     }
 
     public void showError(String message, String reason) {
-        badge.setText(reason == null ? "Erro" : reason);
-        badge.setTextColor(Color.rgb(200, 0, 0));
+        setBadge(reason == null ? "Erro" : reason, M3.ERROR_CONTAINER, M3.ON_ERROR_CONTAINER);
+        showSuccessBlock(false);
         title.setText("");
-        row1Label.setVisibility(View.GONE);
-        row1Value.setVisibility(View.GONE);
-        row2Label.setVisibility(View.GONE);
-        row2Value.setVisibility(View.GONE);
-        presenceButton.setVisibility(View.GONE);
-        conformityButton.setVisibility(View.GONE);
+        showRows(false);
+        progress.setVisibility(View.GONE);
         status.setVisibility(View.VISIBLE);
         status.setText(message);
-        status.setTextColor(Color.rgb(200, 0, 0));
+        status.setTextColor(M3.ERROR);
+        presenceButton.setVisibility(View.GONE);
+        conformityButton.setVisibility(View.GONE);
         rescanButton.setVisibility(View.VISIBLE);
+        setRescanLabel("Escanear novamente", false);
     }
 
     public void setPresenceResult(boolean duplicate, String lastSeenAt) {
+        progress.setVisibility(View.GONE);
         status.setVisibility(View.VISIBLE);
-        status.setTextColor(duplicate ? Color.rgb(180, 140, 0) : Color.rgb(0, 130, 0));
+        status.setTextColor(duplicate ? M3.WARN : M3.SUCCESS);
         status.setText(duplicate
                 ? "Presença já registrada anteriormente nesta sessão.\n" + lastSeenAt
                 : "Presença registrada com sucesso.\n" + lastSeenAt);
@@ -186,6 +228,31 @@ public final class ResultSheet {
         return root.getVisibility() == View.VISIBLE;
     }
 
+    private void setBadge(String text, int bg, int fg) {
+        badge.setText(text);
+        badge.setTextColor(fg);
+        badge.setTextSize(13);
+        badge.setTypeface(android.graphics.Typeface.SANS_SERIF);
+        badge.setLetterSpacing(0.05f);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(M3.dp(badge.getContext(), 14), M3.dp(badge.getContext(), 6),
+                M3.dp(badge.getContext(), 14), M3.dp(badge.getContext(), 6));
+        badge.setBackground(M3.rounded(bg, M3.SHAPE_PILL, badge.getContext()));
+    }
+
+    private void showRows(boolean visible) {
+        int v = visible ? View.VISIBLE : View.GONE;
+        row1Label.setVisibility(v);
+        row1Value.setVisibility(v);
+        row2Label.setVisibility(v);
+        row2Value.setVisibility(v);
+    }
+
+    private void clearStatus() {
+        status.setText("");
+        status.setTextColor(Color.TRANSPARENT);
+    }
+
     private static String conformityLabel(String status) {
         if (status == null) {
             return "Não avaliado";
@@ -197,18 +264,5 @@ public final class ResultSheet {
             return "Reprovado";
         }
         return "Não avaliado";
-    }
-
-    private static TextView sectionLabel(Context context, String text) {
-        TextView label = new TextView(context);
-        label.setText(text);
-        label.setTextSize(12);
-        label.setTextColor(Color.rgb(90, 90, 90));
-        label.setPadding(0, dp(context, 6), 0, 0);
-        return label;
-    }
-
-    private static int dp(Context context, int n) {
-        return (int) (context.getResources().getDisplayMetrics().density * n);
     }
 }

@@ -4,3 +4,4 @@ out/
 *.keystore
 .env
 libs/*.jar
+garimpo/

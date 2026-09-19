@@ -1,8 +1,10 @@
 package mrp.checkin.scan;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -23,7 +25,10 @@ import android.view.TextureView;
 import android.view.WindowManager;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public final class CameraEngine {
@@ -33,13 +38,15 @@ public final class CameraEngine {
         void onCameraError(String message);
 
         void onTorch(boolean on);
+
+        void onFlashSupport(boolean available);
     }
 
     private static final int DECODE_INTERVAL_MS = 120;
     private static final int MAX_IMAGES = 2;
 
     private final Context context;
-    private final TextureView preview;
+    private final AutoFitTextureView preview;
     private final DecodeListener listener;
     private final Handler mainHandler;
     private final HandlerThread thread;
@@ -58,8 +65,14 @@ public final class CameraEngine {
     private int sensorOrientation;
     private long lastDecodeTs;
     private boolean opened;
+    private boolean permissionGranted;
+    private boolean flashReported;
 
-    public CameraEngine(Context context, TextureView preview, DecodeListener listener, Handler mainHandler) {
+    public void setCameraPermission(boolean granted) {
+        permissionGranted = granted;
+    }
+
+    public CameraEngine(Context context, AutoFitTextureView preview, DecodeListener listener, Handler mainHandler) {
         this.context = context;
         this.preview = preview;
         this.listener = listener;
@@ -92,6 +105,23 @@ public final class CameraEngine {
 
     public void toggleTorch() {
         setTorch(!torchOn);
+    }
+
+    public boolean hasFlash() {
+        return torchSupported;
+    }
+
+    private void reportFlashSupport() {
+        if (flashReported) {
+            return;
+        }
+        flashReported = true;
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                listener.onFlashSupport(torchSupported);
+            }
+        });
     }
 
     public void setTorch(boolean on) {
@@ -134,12 +164,14 @@ public final class CameraEngine {
         preview.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int width, int height) {
-                openCamera();
+                if (permissionGranted) {
+                    openCamera();
+                }
             }
 
             @Override
             public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int width, int height) {
-                configureTransform();
+                configureTransform(width, height);
             }
 
             @Override
@@ -155,6 +187,9 @@ public final class CameraEngine {
     }
 
     private void openCamera() {
+        if (!permissionGranted) {
+            return;
+        }
         if (opened || cameraDevice != null) {
             return;
         }
@@ -163,11 +198,14 @@ public final class CameraEngine {
             reportError("Câmera indisponível neste aparelho.");
             return;
         }
+        opened = true;
         try {
             String cameraId = pickBackCamera(cm);
             CameraCharacteristics cc = cm.getCameraCharacteristics(cameraId);
-            sensorOrientation = cc.get(CameraCharacteristics.SENSOR_ORIENTATION);
+            Integer so = cc.get(CameraCharacteristics.SENSOR_ORIENTATION);
+            sensorOrientation = so == null ? 0 : so;
             torchSupported = Boolean.TRUE.equals(cc.get(CameraCharacteristics.FLASH_INFO_AVAILABLE));
+            reportFlashSupport();
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             if (map == null) {
                 reportError("Câmera sem perfis de captura.");
@@ -176,8 +214,15 @@ public final class CameraEngine {
 
             Size[] yuvSizes = map.getOutputSizes(ImageFormat.YUV_420_888);
             Size[] textureSizes = map.getOutputSizes(SurfaceTexture.class);
+            if (yuvSizes == null || yuvSizes.length == 0
+                    || textureSizes == null || textureSizes.length == 0) {
+                reportError("Câmera sem perfis de captura.");
+                return;
+            }
+            // Decode: plano Y próximo de 1280x720 (inalterado).
             readerSize = chooseClosest(yuvSizes, new Size(1280, 720));
-            previewSize = chooseClosest(textureSizes, readerSize);
+            // Preview: tamanho + proporção da view (template Camera2Basic).
+            setupPreviewOutput(textureSizes, yuvSizes);
 
             imageReader = ImageReader.newInstance(readerSize.getWidth(), readerSize.getHeight(),
                     ImageFormat.YUV_420_888, MAX_IMAGES);
@@ -198,7 +243,7 @@ public final class CameraEngine {
 
             SurfaceTexture st = preview.getSurfaceTexture();
             st.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
-            configureTransform();
+            applyTransformNowAndAfterLayout();
             final Surface previewSurface = new Surface(st);
             final Surface readerSurface = imageReader.getSurface();
 
@@ -220,8 +265,11 @@ public final class CameraEngine {
                     reportError("Erro ao abrir a câmera (" + error + ").");
                 }
             }, handler);
-            opened = true;
+        } catch (SecurityException e) {
+            opened = false;
+            reportError("Permissão de câmera não concedida.");
         } catch (Exception e) {
+            opened = false;
             reportError("Não foi possível acessar a câmera: " + e.getMessage());
         }
     }
@@ -350,42 +398,139 @@ public final class CameraEngine {
         return best;
     }
 
-    private void configureTransform() {
-        if (previewSize == null || preview.getWidth() == 0 || preview.getHeight() == 0) {
-            return;
+    private static final int MAX_PREVIEW_WIDTH = 1920;
+    private static final int MAX_PREVIEW_HEIGHT = 1080;
+
+    /** Escolhe o tamanho do preview e a proporção da view (Camera2Basic). */
+    private void setupPreviewOutput(Size[] textureSizes, Size[] yuvSizes) {
+        Size largest = Collections.max(Arrays.asList(yuvSizes), new CompareSizesByArea());
+        int displayRotation = getDisplayRotationEnum();
+        boolean swappedDimensions = false;
+        switch (displayRotation) {
+            case Surface.ROTATION_0:
+            case Surface.ROTATION_180:
+                if (sensorOrientation == 90 || sensorOrientation == 270) {
+                    swappedDimensions = true;
+                }
+                break;
+            case Surface.ROTATION_90:
+            case Surface.ROTATION_270:
+                if (sensorOrientation == 0 || sensorOrientation == 180) {
+                    swappedDimensions = true;
+                }
+                break;
+            default:
+                break;
         }
-        int rotation = getDisplayRotation();
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        Point displaySize = new Point(1080, 1920);
+        if (wm != null) {
+            wm.getDefaultDisplay().getSize(displaySize);
+        }
         int viewW = preview.getWidth();
         int viewH = preview.getHeight();
+        if (viewW <= 0 || viewH <= 0) {
+            viewW = displaySize.x;
+            viewH = displaySize.y;
+        }
+        int rotatedPreviewWidth = swappedDimensions ? viewH : viewW;
+        int rotatedPreviewHeight = swappedDimensions ? viewW : viewH;
+        int maxPreviewWidth = swappedDimensions ? displaySize.y : displaySize.x;
+        int maxPreviewHeight = swappedDimensions ? displaySize.x : displaySize.y;
+        if (maxPreviewWidth > MAX_PREVIEW_WIDTH) {
+            maxPreviewWidth = MAX_PREVIEW_WIDTH;
+        }
+        if (maxPreviewHeight > MAX_PREVIEW_HEIGHT) {
+            maxPreviewHeight = MAX_PREVIEW_HEIGHT;
+        }
+        previewSize = chooseOptimalSize(textureSizes, rotatedPreviewWidth, rotatedPreviewHeight,
+                maxPreviewWidth, maxPreviewHeight, largest);
+        int orientation = context.getResources().getConfiguration().orientation;
+        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            preview.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
+        } else {
+            preview.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
+        }
+    }
+
+    /** Menor tamanho suficiente com o aspecto pedido (tolerância ~2%); senão o maior que couber. */
+    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth, int textureViewHeight,
+            int maxWidth, int maxHeight, Size aspectRatio) {
+        List<Size> bigEnough = new ArrayList<>();
+        List<Size> notBigEnough = new ArrayList<>();
+        long w = aspectRatio.getWidth();
+        long h = aspectRatio.getHeight();
+        for (Size option : choices) {
+            long ow = option.getWidth();
+            long oh = option.getHeight();
+            if (ow <= maxWidth && oh <= maxHeight
+                    && Math.abs(ow * h - oh * w) * 50 <= ow * h) {
+                if (ow >= textureViewWidth && oh >= textureViewHeight) {
+                    bigEnough.add(option);
+                } else {
+                    notBigEnough.add(option);
+                }
+            }
+        }
+        if (!bigEnough.isEmpty()) {
+            return Collections.min(bigEnough, new CompareSizesByArea());
+        } else if (!notBigEnough.isEmpty()) {
+            return Collections.max(notBigEnough, new CompareSizesByArea());
+        }
+        return choices[0];
+    }
+
+    private static class CompareSizesByArea implements Comparator<Size> {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight()
+                    - (long) rhs.getWidth() * rhs.getHeight());
+        }
+    }
+
+    /** Transform fiel ao Camera2Basic: em portrait travado = identidade
+     * (o TextureView já compensa o sensor sozinho — matriz manual causava a
+     * rotação dupla e o retângulo deslocado). */
+    private void configureTransform(int viewWidth, int viewHeight) {
+        if (preview == null || previewSize == null || viewWidth <= 0 || viewHeight <= 0) {
+            return;
+        }
+        int rotation = getDisplayRotationEnum();
         Matrix matrix = new Matrix();
-        RectF viewRect = new RectF(0, 0, viewW, viewH);
+        RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
         RectF bufferRect = new RectF(0, 0, previewSize.getHeight(), previewSize.getWidth());
         float centerX = viewRect.centerX();
         float centerY = viewRect.centerY();
-        bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
-        matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
-        float scale = Math.max((float) viewH / previewSize.getWidth(),
-                (float) viewW / previewSize.getHeight());
-        matrix.postScale(scale, scale, centerX, centerY);
-        matrix.postRotate((sensorOrientation - rotation + 360) % 360, centerX, centerY);
+        if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
+            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
+            matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
+            float scale = Math.max((float) viewHeight / previewSize.getHeight(),
+                    (float) viewWidth / previewSize.getWidth());
+            matrix.postScale(scale, scale, centerX, centerY);
+            matrix.postRotate(90 * (rotation - 2), centerX, centerY);
+        } else if (Surface.ROTATION_180 == rotation) {
+            matrix.postRotate(180, centerX, centerY);
+        }
         preview.setTransform(matrix);
     }
 
-    private int getDisplayRotation() {
+    /** Aplica agora e reaplica pós-layout (setAspectRatio é assíncrono). */
+    private void applyTransformNowAndAfterLayout() {
+        configureTransform(Math.max(preview.getWidth(), 1), Math.max(preview.getHeight(), 1));
+        preview.post(new Runnable() {
+            @Override
+            public void run() {
+                configureTransform(preview.getWidth(), preview.getHeight());
+            }
+        });
+    }
+
+    private int getDisplayRotationEnum() {
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         if (wm == null) {
-            return 0;
+            return Surface.ROTATION_0;
         }
-        switch (wm.getDefaultDisplay().getRotation()) {
-            case Surface.ROTATION_90:
-                return 90;
-            case Surface.ROTATION_180:
-                return 180;
-            case Surface.ROTATION_270:
-                return 270;
-            default:
-                return 0;
-        }
+        return wm.getDefaultDisplay().getRotation();
     }
 
     private void listeningDecode(final String text) {

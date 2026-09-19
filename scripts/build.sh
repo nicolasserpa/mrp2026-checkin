@@ -41,7 +41,7 @@ echo "[2/5] aapt2 link (versão vinda do AndroidManifest.xml)"
     --manifest AndroidManifest.xml \
     --auto-add-overlay \
     --min-sdk-version 26 \
-    --target-sdk-version 33 \
+    --target-sdk-version 36 \
     "$OUT/compiled.zip"
 
 echo "[3/5] javac (release 8)"
@@ -69,9 +69,22 @@ cp "$OUT/app-unsigned.apk" "$OUT/app-unsigned-dex.apk"
 )
 mv "$OUT/app-unsigned-dex.apk" "$OUT/app-unsigned.apk"
 
+BUILDINFO="$OUT/buildinfo.txt"
+{
+    echo "mrp2026-checkin buildinfo (build.sh)"
+    echo "data:        $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo "versao:      $(grep -o 'android:versionName="[^"]*"' AndroidManifest.xml | head -1)"
+    echo "code:        $(grep -o 'android:versionCode="[^"]*"' AndroidManifest.xml | head -1)"
+    echo "sha256 classes.dex:  $(sha256sum "$OUT/dex/classes.dex" | cut -d' ' -f1)"
+    echo "sha256 app-unsigned: $(sha256sum "$OUT/app-unsigned.apk" | cut -d' ' -f1)"
+    echo "sha256 android.jar:  $(sha256sum "$ANDROID_JAR" | cut -d' ' -f1)"
+    echo "sha256 zxing-core:   $(sha256sum libs/zxing-core.jar | cut -d' ' -f1)"
+} | tee "$BUILDINFO"
+
 echo
 echo "Confira os endereços:"
-ls -la "$ANDROID_JAR" "$R8_JAR" "$OUT/app-unsigned.apk" "$OUT/dex/classes.dex"
+ls -la "$ANDROID_JAR" "$R8_JAR" "$OUT/app-unsigned.apk" "$OUT/dex/classes.dex" "$BUILDINFO"
 echo
 echo "Assine com:  bash scripts/sign.sh"
 echo "Artefato:    $OUT/app-unsigned.apk"
+echo "Buildinfo:   $BUILDINFO"

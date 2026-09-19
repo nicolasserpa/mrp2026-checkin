@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta Material 3 (seed #6750A4). Ao alterar aqui, espelhe em ui/M3.java. -->
+<resources>
+    <color name="ic_launcher_background">#212121</color>
+    <color name="mrp_primary">#6750A4</color>
+    <color name="mrp_on_primary">#FFFFFF</color>
+    <color name="mrp_primary_container">#EADDFF</color>
+    <color name="mrp_on_primary_container">#21005D</color>
+    <color name="mrp_on_surface">#1D1B20</color>
+    <color name="mrp_surface">#FEF7FF</color>
+    <color name="mrp_surface_container">#F3EDF7</color>
+    <color name="mrp_outline">#79747E</color>
+    <color name="mrp_error">#B3261E</color>
+</resources>

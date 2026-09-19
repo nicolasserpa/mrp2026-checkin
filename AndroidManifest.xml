@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="mrp.checkin"
-    android:versionCode="1"
-    android:versionName="0.1.0">
+    android:versionCode="7"
+    android:versionName="0.7.0">
 
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -13,9 +13,11 @@
 
     <application
         android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/Theme.MRP">
 
         <activity
             android:name=".MainActivity"
@@ -35,6 +37,11 @@
 
         <activity
             android:name=".CheckActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".SetupActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

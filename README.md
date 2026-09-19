@@ -25,7 +25,7 @@ termux-open ~/storage/downloads/mrp-checkin-release.apk
 
 ## Requisitos do backend para LAN
 
-- `ALLOWED_HOSTS` do Django deve incluir o IP do servidor (`192.168.0.10` neste ambiente).
+- `ALLOWED_HOSTS` do Django deve incluir o IP do servidor (`192.168.0.30` neste ambiente; confira com `ip addr` — DHCP muda o IP).
 - Com `DEBUG=False`, libere HTTP puro: `LAN_INSECURE=1` (desliga redirect HTTPS/HSTS/cookies secure).
 - O token JWT do app expira em 12h; **revogação imediata**: desativar o staff no Admin
   (`is_active=False`) — o backend revalida em cada request.

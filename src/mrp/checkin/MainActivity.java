@@ -2,11 +2,10 @@ package mrp.checkin;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -15,8 +14,10 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
+import mrp.checkin.core.CrashReporter;
 import mrp.checkin.core.TokenStore;
 import mrp.checkin.net.ApiClient;
+import mrp.checkin.ui.M3;
 
 public class MainActivity extends Activity {
     private TokenStore store;
@@ -30,9 +31,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        M3.surfaceSystemBars(this);
         store = new TokenStore(this);
+        CrashReporter.maybeShow(this);
         if (store.hasToken()) {
             openScan();
+            return;
+        }
+        if (!store.hasEndpoint()) {
+            openSetup();
             return;
         }
         api = new ApiClient(store);
@@ -44,44 +51,79 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(20);
-        root.setPadding(pad, dp(60), pad, pad);
+        root.setPadding(pad, dp(20), pad, dp(24));
+        M3.edgeToEdgeTop(scroll, 44);
 
-        TextView title = new TextView(this);
-        title.setText("MRP2026 Check-In");
-        title.setTextSize(28);
-        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        root.addView(title);
+        LinearLayout brand = new LinearLayout(this);
+        brand.setOrientation(LinearLayout.VERTICAL);
+        brand.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        TextView subtitle = new TextView(this);
-        subtitle.setTextSize(15);
-        subtitle.setText("Acesso de staff / fiscal — credenciamento e conformidade");
-        subtitle.setTextColor(Color.rgb(90, 90, 90));
-        root.addView(subtitle);
+        TextView title = M3.title(this, "MRP2026");
+        title.setTextSize(34);
+        title.setGravity(Gravity.CENTER);
+        brand.addView(title);
 
-        endpointView = new TextView(this);
-        endpointView.setTextSize(13);
-        endpointView.setText("Servidor: " + store.getEndpoint());
-        endpointView.setTextColor(Color.rgb(110, 110, 110));
+        TextView subtitle = M3.label(this, "Check-in · Credenciamento & conformidade");
+        subtitle.setGravity(Gravity.CENTER);
+        subtitle.setAllCaps(false);
+        subtitle.setLetterSpacing(0f);
+        brand.addView(subtitle);
+        root.addView(brand);
+
+        root.addView(M3.spacer(this, 24));
+
+        endpointView = M3.pill(this,
+                "Servidor: " + store.getEndpoint(), M3.SURFACE_VARIANT, M3.ON_SURFACE_VARIANT);
+        endpointView.setGravity(Gravity.CENTER);
         root.addView(endpointView);
 
-        root.addView(spacer(this, dp(24)));
+        root.addView(M3.spacer(this, 28));
 
-        usernameField = input(this, "Usuário");
+        root.addView(M3.label(this, "Usuário"));
+        usernameField = M3.outlinedInput(this, "Seu usuário de staff");
+        usernameField.setImeOptions(EditorInfo.IME_ACTION_NEXT);
+        usernameField.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, android.view.KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                    passwordField.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+        });
         root.addView(usernameField);
 
-        passwordField = input(this, "Senha");
-        passwordField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        root.addView(passwordField);
+        root.addView(M3.spacer(this, 12));
+
+        root.addView(M3.label(this, "Senha"));
+        LinearLayout passwordRow = M3.outlinedPassword(this, "Sua senha");
+        root.addView(passwordRow);
+        passwordField = M3.passwordInner(passwordRow);
+        passwordField.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        passwordField.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, android.view.KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    doLogin();
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        root.addView(M3.spacer(this, 16));
 
         statusView = new TextView(this);
         statusView.setTextSize(14);
-        statusView.setTextColor(Color.rgb(200, 0, 0));
+        statusView.setTextColor(M3.ERROR);
         statusView.setGravity(Gravity.CENTER);
         statusView.setPadding(0, dp(8), 0, 0);
         root.addView(statusView);
 
-        loginButton = new Button(this);
-        loginButton.setText("Entrar");
+        root.addView(M3.spacer(this, 8));
+
+        loginButton = M3.filledButton(this, "Entrar");
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -90,9 +132,9 @@ public class MainActivity extends Activity {
         });
         root.addView(loginButton);
 
-        Button settingsButton = new Button(this);
-        settingsButton.setText("Ajustar servidor (Nuvem/LAN)");
-        settingsButton.setBackgroundColor(Color.argb(255, 240, 240, 240));
+        root.addView(M3.spacer(this, 12));
+
+        Button settingsButton = M3.tonalButton(this, "Ajustar servidor (Nuvem/LAN)");
         settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -102,6 +144,7 @@ public class MainActivity extends Activity {
         root.addView(settingsButton);
 
         scroll.addView(root);
+        usernameField.requestFocus();
         return scroll;
     }
 
@@ -130,11 +173,16 @@ public class MainActivity extends Activity {
                     store.setToken(result.object.optString("token"));
                     store.setOperator(username);
                     openScan();
+                } else if (result.errorKind() == ApiClient.ErrorKind.NETWORK) {
+                    statusView.setText("Servidor inacessível. Verifique IP/porta e a rede "
+                            + "em Ajustes, e tente novamente.");
+                } else if (result.errorKind() == ApiClient.ErrorKind.THROTTLE) {
+                    statusView.setText("Muitas tentativas em sequência. Aguarde um instante.");
                 } else {
                     String detail = result.detail();
                     statusView.setText(detail != null
                             ? detail
-                            : "Credenciais inválidas ou servidor inacessível. Verifique o servidor em Ajustes.");
+                            : "Usuário ou senha inválidos.");
                 }
             }
         });
@@ -147,20 +195,11 @@ public class MainActivity extends Activity {
         finish();
     }
 
-    private static EditText input(Activity context, String hint) {
-        EditText field = new EditText(context);
-        field.setHint(hint);
-        field.setTextSize(17);
-        field.setSingleLine(true);
-        return field;
-    }
-
-    private static View spacer(Activity context, int height) {
-        View view = new View(context);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, height);
-        view.setLayoutParams(lp);
-        return view;
+    private void openSetup() {
+        Intent intent = new Intent(this, SetupActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private int dp(int n) {

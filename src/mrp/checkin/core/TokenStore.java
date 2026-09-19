@@ -9,7 +9,7 @@ public final class TokenStore {
     private static final String KEY_ENDPOINT = "endpoint";
     private static final String KEY_OPERATOR = "operator";
 
-    public static final String DEFAULT_ENDPOINT = "http://192.168.0.10:8000";
+    public static final String DEFAULT_ENDPOINT = "http://192.168.0.30:8000";
 
     private final SharedPreferences prefs;
 
@@ -40,6 +40,10 @@ public final class TokenStore {
 
     public void setOperator(String name) {
         prefs.edit().putString(KEY_OPERATOR, name).apply();
+    }
+
+    public boolean hasEndpoint() {
+        return prefs.contains(KEY_ENDPOINT);
     }
 
     public String getEndpoint() {
