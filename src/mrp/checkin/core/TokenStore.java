@@ -11,9 +11,14 @@ public final class TokenStore {
 
     public static final String DEFAULT_ENDPOINT = "http://192.168.0.30:8000";
 
+    /** Endpoint do modo dev offline (sem servidor, fixtures locais). */
+    public static final String DEV_ENDPOINT = "dev://offline";
+
+    private final Context context;
     private final SharedPreferences prefs;
 
     public TokenStore(Context context) {
+        this.context = context;
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
@@ -59,9 +64,41 @@ public final class TokenStore {
         while (u.endsWith("/")) {
             u = u.substring(0, u.length() - 1);
         }
+        if (u.startsWith("dev://")) {
+            return u;
+        }
         if (!u.startsWith("http://") && !u.startsWith("https://")) {
             u = "http://" + u;
         }
         return u;
+    }
+
+    private static boolean isDevEndpoint(String endpoint) {
+        return endpoint != null && endpoint.startsWith("dev://");
+    }
+
+    private static boolean isDevPackage(String packageName) {
+        return packageName != null && packageName.endsWith(".dev");
+    }
+
+    /** Modo dev se o endpoint salvo é dev:// OU o package é *.dev (APK dev lado a lado). */
+    public boolean isDev() {
+        if (isDevEndpoint(getEndpoint())) {
+            return true;
+        }
+        return context != null && isDevPackage(context.getPackageName());
+    }
+
+    /** Variante estática (lê prefs + packageName direto do Context). */
+    public static boolean isDev(Context context) {
+        if (context == null) {
+            return false;
+        }
+        if (isDevPackage(context.getPackageName())) {
+            return true;
+        }
+        String endpoint = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_ENDPOINT, "");
+        return isDevEndpoint(endpoint);
     }
 }
