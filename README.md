@@ -17,9 +17,9 @@ bash scripts/keystore-create.sh   # gera ~/.keys/mrp-release.jks + credenciais (
 bash scripts/sign.sh       # gera out/mrp-checkin-release.apk assinado e verificado
 ```
 
-Instalador:
+Instalador (o sign.sh já copia o APK assinado para ~/storage/downloads; requer termux-setup-storage uma vez):
 ```bash
-cp out/mrp-checkin-release.apk ~/storage/downloads/   # requer termux-setup-storage uma vez
+bash scripts/sign.sh
 termux-open ~/storage/downloads/mrp-checkin-release.apk
 ```
 

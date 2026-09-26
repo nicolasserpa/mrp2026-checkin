@@ -19,6 +19,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 
 import mrp.checkin.core.AuthFlow;
+import mrp.checkin.core.DevFixtures;
 import mrp.checkin.core.TokenStore;
 import mrp.checkin.net.ApiClient;
 import mrp.checkin.ui.M3;
@@ -69,11 +70,14 @@ public class CheckActivity extends Activity {
 
     private View buildUi(final String conformityStatus, final String qrText, final int sessionId) {
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(M3.surface(this));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(20);
         root.setPadding(pad, dp(20), pad, dp(24));
-        M3.edgeToEdgeTop(scroll, 20);
+        // Topo 20dp + status bar; rodapé soma navbar/gesto/teclado para o
+        // "Enviar avaliação" ficar tocável acima da barra.
+        M3.edgeToEdge(scroll, 20, 0, 0);
 
         root.addView(M3.headline(this, "Conformidade técnica"));
         TextView sub = M3.label(this, "Inspeção manual de segurança da equipe fiscal.");
@@ -86,10 +90,12 @@ public class CheckActivity extends Activity {
 
         LinearLayout vehicleCard = M3.card(this);
         TextView vehName = M3.title(this, vehicleName);
+        vehName.setPadding(0, 0, 0, dp(4));
         vehicleCard.addView(vehName);
         TextView vehTeam = M3.body(this, "Equipe: " + team);
-        vehTeam.setTextColor(M3.ON_SURFACE_VARIANT);
+        vehTeam.setTextColor(M3.onSurfaceVariant(this));
         vehTeam.setTextSize(15);
+        vehTeam.setPadding(0, 0, 0, dp(10));
         vehicleCard.addView(vehTeam);
         vehicleCard.addView(M3.pill(this, "Status atual: " + statusLabel(conformityStatus),
                 statusContainer(conformityStatus), statusForeground(conformityStatus)));
@@ -102,6 +108,7 @@ public class CheckActivity extends Activity {
 
         LinearLayout resultCard = M3.card(this);
         resultCard.addView(M3.label(this, "Resultado da inspeção"));
+        resultCard.addView(M3.spacer(this, 8));
         resultGroup = new RadioGroup(this);
         resultGroup.setOrientation(RadioGroup.VERTICAL);
         RadioButton passBtn = radioRow("Aprovado");
@@ -120,12 +127,13 @@ public class CheckActivity extends Activity {
 
         LinearLayout itemsCard = M3.card(this);
         itemsCard.addView(M3.label(this, "Itens conferidos"));
+        itemsCard.addView(M3.spacer(this, 6));
         for (int i = 0; i < ITEM_KEYS.length; i++) {
             CheckBox check = new CheckBox(this);
             check.setText(ITEM_LABELS[i]);
             check.setTextSize(15);
-            check.setTextColor(M3.ON_SURFACE);
-            check.setButtonTintList(M3.checkTint());
+            check.setTextColor(M3.onSurface(this));
+            check.setButtonTintList(M3.checkTint(this));
             check.setMinHeight(dp(48));
             check.setGravity(Gravity.CENTER_VERTICAL);
             check.setPadding(0, dp(4), 0, dp(4));
@@ -138,6 +146,7 @@ public class CheckActivity extends Activity {
 
         LinearLayout notesCard = M3.card(this);
         notesCard.addView(M3.label(this, "Notas (opcional)"));
+        notesCard.addView(M3.spacer(this, 10));
         notesField = M3.outlinedTextArea(this, "Observações do fiscal…");
         notesCard.addView(notesField);
         formBox.addView(notesCard);
@@ -148,7 +157,7 @@ public class CheckActivity extends Activity {
 
         statusView = new TextView(this);
         statusView.setTextSize(14);
-        statusView.setTextColor(M3.ERROR);
+        statusView.setTextColor(M3.error(this));
         statusView.setGravity(Gravity.CENTER);
         statusView.setPadding(0, dp(8), 0, dp(8));
         root.addView(statusView);
@@ -178,8 +187,8 @@ public class CheckActivity extends Activity {
         RadioButton rb = new RadioButton(this);
         rb.setText(text);
         rb.setTextSize(16);
-        rb.setTextColor(M3.ON_SURFACE);
-        rb.setButtonTintList(M3.checkTint());
+        rb.setTextColor(M3.onSurface(this));
+        rb.setButtonTintList(M3.checkTint(this));
         rb.setMinHeight(dp(48));
         rb.setGravity(Gravity.CENTER_VERTICAL);
         return rb;
@@ -193,7 +202,7 @@ public class CheckActivity extends Activity {
         RadioButton selected = checkedId == -1 ? null : findViewById(checkedId);
         if (selected == null) {
             statusView.setText("Selecione o resultado: aprovado ou reprovado.");
-            statusView.setTextColor(M3.ERROR);
+            statusView.setTextColor(M3.error(this));
             return;
         }
         String result = checkedId == failBtnId ? "fail" : "pass";
@@ -209,7 +218,7 @@ public class CheckActivity extends Activity {
         }
         if ("pass".equals(result) && items.length() == 0) {
             statusView.setText("Para aprovar, marque ao menos um item conferido.");
-            statusView.setTextColor(M3.ERROR);
+            statusView.setTextColor(M3.error(this));
             return;
         }
 
@@ -229,6 +238,14 @@ public class CheckActivity extends Activity {
                 body.put("notes", notes);
             }
         } catch (Exception ignored) {
+        }
+
+        if (store.isDev()) {
+            submitting = false;
+            submitButton.setEnabled(true);
+            submitButton.setText("Enviar avaliação");
+            renderDone(DevFixtures.conformityFor(result));
+            return;
         }
 
         api.post("/api/v1/checkin/conformity", body, true, new ApiClient.Callback() {
@@ -251,7 +268,7 @@ public class CheckActivity extends Activity {
                         statusView.setText(result.detail() != null ? result.detail()
                                 : "Falha ao registrar conformidade.");
                     }
-                    statusView.setTextColor(M3.ERROR);
+                    statusView.setTextColor(M3.error(CheckActivity.this));
                     return;
                 }
                 renderDone(result.object);
@@ -264,8 +281,8 @@ public class CheckActivity extends Activity {
         resultBox.setVisibility(View.VISIBLE);
 
         boolean pass = "pass".equals(conformity.optString("conformity_status", ""));
-        int bg = pass ? M3.SUCCESS_CONTAINER : M3.ERROR_CONTAINER;
-        int fg = pass ? M3.ON_SUCCESS_CONTAINER : M3.ON_ERROR_CONTAINER;
+        int bg = pass ? M3.successContainer(this) : M3.errorContainer(this);
+        int fg = pass ? M3.onSuccessContainer(this) : M3.onErrorContainer(this);
 
         TextView badgePill = M3.pill(this, pass ? "Veículo aprovado" : "Veículo reprovado", bg, fg);
         resultBox.addView(badgePill);
@@ -288,24 +305,24 @@ public class CheckActivity extends Activity {
         resultBox.addView(backButton);
     }
 
-    private static int statusContainer(String status) {
+    private int statusContainer(String status) {
         if ("pass".equals(status)) {
-            return M3.SUCCESS_CONTAINER;
+            return M3.successContainer(this);
         }
         if ("fail".equals(status)) {
-            return M3.ERROR_CONTAINER;
+            return M3.errorContainer(this);
         }
-        return M3.SURFACE_VARIANT;
+        return M3.surfaceVariant(this);
     }
 
-    private static int statusForeground(String status) {
+    private int statusForeground(String status) {
         if ("pass".equals(status)) {
-            return M3.ON_SUCCESS_CONTAINER;
+            return M3.onSuccessContainer(this);
         }
         if ("fail".equals(status)) {
-            return M3.ON_ERROR_CONTAINER;
+            return M3.onErrorContainer(this);
         }
-        return M3.ON_SURFACE_VARIANT;
+        return M3.onSurfaceVariant(this);
     }
 
     private int dp(int n) {

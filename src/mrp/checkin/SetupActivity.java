@@ -49,11 +49,14 @@ public class SetupActivity extends Activity {
         store = new TokenStore(this);
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(M3.surface(this));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(20);
         root.setPadding(pad, dp(20), pad, dp(24));
-        M3.edgeToEdgeTop(scroll, 44);
+        // Topo 44dp + status bar; rodapé soma navbar/gesto/teclado para o
+        // "Buscar servidor na rede" e o "Testar e salvar" não sumirem.
+        M3.edgeToEdge(scroll, 44, 0, 0);
 
         root.addView(M3.headline(this, "Servidor da API"));
 
@@ -69,6 +72,19 @@ public class SetupActivity extends Activity {
 
         LinearLayout scanCard = M3.card(this);
         scanCard.addView(M3.label(this, "Encontrar na rede"));
+        scanCard.addView(M3.spacer(this, 6));
+
+        statusView = new TextView(this);
+        statusView.setTextSize(13);
+        statusView.setTextColor(M3.onSurfaceVariant(this));
+        statusView.setPadding(0, dp(8), 0, 0);
+        scanCard.addView(statusView);
+
+        resultsView = new LinearLayout(this);
+        resultsView.setOrientation(LinearLayout.VERTICAL);
+        scanCard.addView(resultsView);
+
+        scanCard.addView(M3.spacer(this, 8));
 
         scanButton = M3.filledButton(this, "Buscar servidor na rede");
         scanButton.setOnClickListener(new View.OnClickListener() {
@@ -78,22 +94,13 @@ public class SetupActivity extends Activity {
             }
         });
         scanCard.addView(scanButton);
-
-        statusView = new TextView(this);
-        statusView.setTextSize(13);
-        statusView.setTextColor(M3.ON_SURFACE_VARIANT);
-        statusView.setPadding(0, dp(8), 0, 0);
-        scanCard.addView(statusView);
-
-        resultsView = new LinearLayout(this);
-        resultsView.setOrientation(LinearLayout.VERTICAL);
-        scanCard.addView(resultsView);
         root.addView(scanCard);
 
         root.addView(M3.spacer(this, 16));
 
         LinearLayout manualCard = M3.card(this);
         manualCard.addView(M3.label(this, "Digitar endereço"));
+        manualCard.addView(M3.spacer(this, 10));
         endpointField = M3.outlinedInput(this, "http://192.168.0.30:8000");
         endpointField.setText(store.getEndpoint());
         endpointField.setImeOptions(EditorInfo.IME_ACTION_DONE);
@@ -109,11 +116,7 @@ public class SetupActivity extends Activity {
         });
         manualCard.addView(endpointField);
 
-        TextView hint = M3.label(this, "IP ou hostname com porta. Ex.: http://192.168.0.30:8000");
-        hint.setAllCaps(false);
-        hint.setLetterSpacing(0f);
-        hint.setPadding(0, dp(4), 0, 0);
-        manualCard.addView(hint);
+        manualCard.addView(M3.spacer(this, 8));
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -160,7 +163,7 @@ public class SetupActivity extends Activity {
             return;
         }
         scanButton.setEnabled(false);
-        statusView.setTextColor(M3.ON_SURFACE_VARIANT);
+        statusView.setTextColor(M3.onSurfaceVariant(this));
         statusView.setText("Preparando…");
         resultsView.removeAllViews();
 
@@ -222,7 +225,7 @@ public class SetupActivity extends Activity {
                     public void run() {
                         store.setEndpoint(endpoint);
                         scanButton.setEnabled(true);
-                        statusView.setTextColor(M3.SUCCESS);
+                        statusView.setTextColor(M3.success(SetupActivity.this));
                         statusView.setText("Servidor encontrado: " + host);
                         addResult(host, endpoint);
                     }
@@ -235,7 +238,7 @@ public class SetupActivity extends Activity {
                     @Override
                     public void run() {
                         scanButton.setEnabled(true);
-                        statusView.setTextColor(M3.WARN);
+                        statusView.setTextColor(M3.warn(SetupActivity.this));
                         statusView.setText("Nenhum servidor encontrado. "
                                 + "Confirme o endereço acima.");
                     }
@@ -249,7 +252,7 @@ public class SetupActivity extends Activity {
             @Override
             public void run() {
                 scanButton.setEnabled(true);
-                statusView.setTextColor(M3.ERROR);
+                statusView.setTextColor(M3.error(SetupActivity.this));
                 statusView.setText(message);
             }
         });

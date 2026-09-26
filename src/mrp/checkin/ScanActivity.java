@@ -7,9 +7,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -27,12 +27,14 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 
 import mrp.checkin.core.AuthFlow;
 import mrp.checkin.core.CrashReporter;
+import mrp.checkin.core.DevFixtures;
 import mrp.checkin.core.ScanPhase;
 import mrp.checkin.core.TokenStore;
 import mrp.checkin.core.VerifyParser;
@@ -64,6 +66,19 @@ public class ScanActivity extends Activity {
     private ResultSheet resultSheet;
     private LinearLayout headerView;
     private View viewfinder;
+    private FrameLayout rootView;
+    private LinearLayout devBarFloat;
+    private int topInset;
+    private int bottomInset;
+    private int leftInset;
+    private int rightInset;
+    /** Margem-base da lanterna (e da barra dev) acima do rodapé, sem inset. */
+    private static final int FLOAT_BASE_MARGIN_DP = 96;
+    private int hintBaseDp = 120;
+    private static final int HINT_BASE_PORTRAIT_DP = 120;
+    private static final int HINT_BASE_LANDSCAPE_DP = 84;
+    private static final int FINDER_PORTRAIT_DP = 240;
+    private static final int FINDER_LANDSCAPE_DP = 200;
 
     private final ArrayList<Integer> sessionIds = new ArrayList<>();
     private final ArrayList<String> sessionNames = new ArrayList<>();
@@ -88,12 +103,7 @@ public class ScanActivity extends Activity {
         api = new ApiClient(store);
         feedback = new ScanFeedback(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setStatusBarColor(SCAN_STATUS_COLOR);
-        getWindow().setNavigationBarColor(M3.SURFACE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int flags = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            getWindow().getDecorView().setSystemUiVisibility(flags);
-        }
+        M3.darkOverlaySystemBars(this, SCAN_STATUS_COLOR);
 
         SharedPreferences prefs = getSharedPreferences(PREF_RETRY, MODE_PRIVATE);
         sessionId = prefs.getInt(KEY_SESSION_ID, 1);
@@ -146,9 +156,10 @@ public class ScanActivity extends Activity {
                     public void onFlashSupport(boolean available) {
                         torchFloat.setEnabled(available);
                         torchFloat.setAlpha(available ? 1f : 0.4f);
-                        torchFloat.setVisibility(available ? View.VISIBLE : View.GONE);
+                        updateTorchVisibility();
                     }
                 }, new Handler(Looper.getMainLooper()));
+        applyOrientationLayout();
 
         loadSessions();
         requestCameraPermission();
@@ -156,6 +167,7 @@ public class ScanActivity extends Activity {
 
     private FrameLayout buildUi() {
         FrameLayout root = new FrameLayout(this);
+        rootView = root;
 
         textureView = new AutoFitTextureView(this);
         root.addView(textureView, new FrameLayout.LayoutParams(
@@ -246,24 +258,125 @@ public class ScanActivity extends Activity {
         FrameLayout.LayoutParams torchLp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM | Gravity.END);
-        torchLp.rightMargin = dp(16);
-        torchLp.bottomMargin = dp(96);
+        torchLp.rightMargin = dp(16) + rightInset;
+        torchLp.bottomMargin = dp(FLOAT_BASE_MARGIN_DP) + bottomInset;
         root.addView(torchFloat, torchLp);
 
-        final int baseHeaderTopPad = dp(16);
-        final int baseHintTopMargin = dp(120);
+        if (store.isDev()) {
+            LinearLayout devBar = new LinearLayout(this);
+            devBar.setOrientation(LinearLayout.HORIZONTAL);
+            Button devMember = M3.scrimButton(this, "Simular QR membro", Color.WHITE);
+            devMember.setTextSize(12);
+            devMember.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    handleDecoded("DEV-MEMBER-001");
+                }
+            });
+            devBar.addView(devMember);
+            Button devVehicle = M3.scrimButton(this, "Simular QR veículo", Color.WHITE);
+            devVehicle.setTextSize(12);
+            devVehicle.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    handleDecoded("DEV-VEIC-042");
+                }
+            });
+            devBar.addView(devVehicle);
+            FrameLayout.LayoutParams devLp = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.START);
+            devLp.leftMargin = dp(16) + leftInset;
+            devLp.bottomMargin = dp(FLOAT_BASE_MARGIN_DP) + bottomInset;
+            root.addView(devBar, devLp);
+            devBarFloat = devBar;
+        }
+
         root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-                int topInset = insets.getSystemWindowInsetTop();
-                headerView.setPadding(dp(10), baseHeaderTopPad + topInset, dp(10), dp(10));
-                ((FrameLayout.LayoutParams) hintView.getLayoutParams()).topMargin =
-                        baseHintTopMargin + topInset;
+                M3.SafeArea sa = M3.safeArea(insets);
+                topInset = sa.top;
+                bottomInset = sa.bottom;
+                leftInset = sa.left;
+                rightInset = sa.right;
+                headerView.setPadding(dp(10) + leftInset, dp(16) + topInset,
+                        dp(10) + rightInset, dp(10));
+                layoutHint();
+                layoutFloatingControls();
                 return insets;
             }
         });
 
         return root;
+    }
+
+    /**
+     * Margens dos controles flutuantes (lanterna e barra dev): base fixa +
+     * inset resolvido, para nenhum toque cair na navbar nem na zona de gesto
+     * "home". Reavaliado a cada inset e a cada rotação (a navbar muda de lado).
+     */
+    private void layoutFloatingControls() {
+        if (torchFloat != null) {
+            FrameLayout.LayoutParams lp =
+                    (FrameLayout.LayoutParams) torchFloat.getLayoutParams();
+            lp.rightMargin = dp(16) + rightInset;
+            lp.bottomMargin = dp(FLOAT_BASE_MARGIN_DP) + bottomInset;
+            torchFloat.setLayoutParams(lp);
+        }
+        if (devBarFloat != null) {
+            FrameLayout.LayoutParams lp =
+                    (FrameLayout.LayoutParams) devBarFloat.getLayoutParams();
+            lp.leftMargin = dp(16) + leftInset;
+            lp.bottomMargin = dp(FLOAT_BASE_MARGIN_DP) + bottomInset;
+            devBarFloat.setLayoutParams(lp);
+        }
+    }
+
+    private void layoutHint() {
+        if (hintView == null) {
+            return;
+        }
+        ((FrameLayout.LayoutParams) hintView.getLayoutParams()).topMargin =
+                dp(hintBaseDp) + topInset;
+        hintView.requestLayout();
+    }
+
+    /**
+     * Reposiciona viewfinder/hint/ficha para a orientação vigente sem
+     * recriar a activity: câmera, torch, fase e retry sobrevivem.
+     */
+    private void applyOrientationLayout() {
+        boolean landscape = getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        hintBaseDp = landscape ? HINT_BASE_LANDSCAPE_DP : HINT_BASE_PORTRAIT_DP;
+        int finderDp = landscape ? FINDER_LANDSCAPE_DP : FINDER_PORTRAIT_DP;
+        if (viewfinder != null) {
+            viewfinder.setLayoutParams(new FrameLayout.LayoutParams(
+                    dp(finderDp), dp(finderDp), Gravity.CENTER));
+        }
+        layoutHint();
+        layoutFloatingControls();
+        if (resultSheet != null) {
+            if (landscape) {
+                int maxH = getResources().getDisplayMetrics().heightPixels * 62 / 100;
+                resultSheet.setMaxHeight(Math.max(maxH, dp(200)));
+            } else {
+                resultSheet.setMaxHeight(0);
+            }
+        }
+        if (engine != null) {
+            engine.refreshTransform();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (rootView != null) {
+            rootView.requestLayout();
+        }
+        applyOrientationLayout();
     }
 
     private ArrayAdapter<String> darkSpinnerAdapter() {
@@ -293,9 +406,9 @@ public class ScanActivity extends Activity {
 
     private void styleTorch(boolean on) {
         if (on) {
-            torchFloat.setTextColor(M3.ON_PRIMARY_CONTAINER);
+            torchFloat.setTextColor(M3.onPrimaryContainer(this));
             torchFloat.setBackground(M3.ripple(M3.RIPPLE_ON_CONTAINER,
-                    M3.rounded(M3.PRIMARY_CONTAINER, M3.SHAPE_PILL, this)));
+                    M3.rounded(M3.primaryContainer(this), M3.SHAPE_PILL, this)));
             torchFloat.setText("Lanterna acesa");
         } else {
             torchFloat.setTextColor(Color.WHITE);
@@ -306,10 +419,19 @@ public class ScanActivity extends Activity {
         torchFloat.requestLayout();
     }
 
+    /**
+     * Política pura da lanterna (testável na JVM): visível só com ficha
+     * fechada E flash disponível. O wiring (onResume, onFlashSupport,
+     * onActivityResult) deve sempre passar por aqui via updateTorchVisibility().
+     */
+    static boolean torchShouldShow(boolean sheetVisible, boolean flashAvailable) {
+        return !sheetVisible && flashAvailable;
+    }
+
     private void updateTorchVisibility() {
         boolean sheetVisible = resultSheet != null && resultSheet.isVisible();
-        boolean armed = torchFloat.isEnabled();
-        animateTorch(!sheetVisible, armed);
+        boolean flashAvailable = torchFloat.isEnabled();
+        animateTorch(torchShouldShow(sheetVisible, flashAvailable), flashAvailable);
     }
 
     private void animateTorch(boolean visible, boolean armed) {
@@ -403,6 +525,28 @@ public class ScanActivity extends Activity {
     }
 
     private void loadSessions() {
+        if (store.isDev()) {
+            sessionIds.clear();
+            sessionNames.clear();
+            JSONArray dev = DevFixtures.sessionsArray();
+            for (int i = 0; i < dev.length(); i++) {
+                JSONObject s = dev.optJSONObject(i);
+                if (s != null) {
+                    sessionIds.add(s.optInt("id", 1));
+                    sessionNames.add(s.optString("name", "Sessão"));
+                }
+            }
+            if (sessionIds.isEmpty()) {
+                sessionIds.add(sessionId);
+                sessionNames.add("Sessão " + sessionId + " (dev)");
+            }
+            sessionSpinner.setAdapter(darkSpinnerAdapter());
+            int currentIndex = sessionIds.indexOf(sessionId);
+            if (currentIndex >= 0) {
+                sessionSpinner.setSelection(currentIndex);
+            }
+            return;
+        }
         api.get("/api/v1/sessions?status=open", true, new ApiClient.Callback() {
             @Override
             public void onResult(ApiClient.Result result) {
@@ -479,6 +623,15 @@ public class ScanActivity extends Activity {
         }
         phase = ScanPhase.VERIFYING;
         resultSheet.setWaiting("Verificando QR…");
+        if (store.isDev()) {
+            verifyJson = DevFixtures.verifyFor(qrText);
+            feedback.success();
+            phase = ScanPhase.CONFIRMED;
+            retryTarget = RetryTarget.NONE;
+            renderConfirmed();
+            updateTorchVisibility();
+            return;
+        }
         JSONObject body = new JSONObject();
         try {
             body.put("qr_text", qrText);
@@ -557,6 +710,15 @@ public class ScanActivity extends Activity {
         }
         phase = ScanPhase.VERIFYING;
         resultSheet.setWaiting("Registrando presença…");
+        if (store.isDev()) {
+            presenceJson = DevFixtures.presenceFor(qrText);
+            feedback.success();
+            phase = ScanPhase.CONFIRMED;
+            retryTarget = RetryTarget.NONE;
+            renderConfirmed();
+            updateTorchVisibility();
+            return;
+        }
         JSONObject body = new JSONObject();
         try {
             body.put("qr_text", qrText);
@@ -641,7 +803,6 @@ public class ScanActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (resultSheet != null && resultSheet.isVisible()) {
-            resultSheet.showIdle();
             resumeScanning();
             return;
         }
@@ -671,6 +832,7 @@ public class ScanActivity extends Activity {
             engine.setCameraPermission(true);
             engine.start();
         }
+        updateTorchVisibility();
     }
 
     @Override
@@ -686,10 +848,15 @@ public class ScanActivity extends Activity {
         verifyJson = null;
         presenceJson = null;
         retryTarget = RetryTarget.NONE;
-        resultSheet.showIdle();
+        // Reavalia a lanterna só quando a ficha estiver de fato GONE (ver showIdle).
+        resultSheet.showIdle(new Runnable() {
+            @Override
+            public void run() {
+                updateTorchVisibility();
+            }
+        });
         hintView.setText("Aponte a câmera para o QR da credencial ou do chassi.");
         engine.resumeScanning();
-        updateTorchVisibility();
     }
 
     private void showCameraError(String message) {

@@ -48,11 +48,14 @@ public class MainActivity extends Activity {
 
     private View buildUi() {
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(M3.surface(this));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(20);
         root.setPadding(pad, dp(20), pad, dp(24));
-        M3.edgeToEdgeTop(scroll, 44);
+        // Padding top (44dp + status bar) e bottom (navbar/gesto/teclado):
+        // o "Entrar" e os botões abaixo precisam ficar acima da barra.
+        M3.edgeToEdge(scroll, 44, 0, 0);
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
@@ -73,7 +76,8 @@ public class MainActivity extends Activity {
         root.addView(M3.spacer(this, 24));
 
         endpointView = M3.pill(this,
-                "Servidor: " + store.getEndpoint(), M3.SURFACE_VARIANT, M3.ON_SURFACE_VARIANT);
+                store.isDev() ? "Servidor: modo dev (offline)" : "Servidor: " + store.getEndpoint(),
+                M3.surfaceVariant(this), M3.onSurfaceVariant(this));
         endpointView.setGravity(Gravity.CENTER);
         root.addView(endpointView);
 
@@ -116,7 +120,7 @@ public class MainActivity extends Activity {
 
         statusView = new TextView(this);
         statusView.setTextSize(14);
-        statusView.setTextColor(M3.ERROR);
+        statusView.setTextColor(M3.error(this));
         statusView.setGravity(Gravity.CENTER);
         statusView.setPadding(0, dp(8), 0, 0);
         root.addView(statusView);
@@ -142,6 +146,20 @@ public class MainActivity extends Activity {
             }
         });
         root.addView(settingsButton);
+
+        root.addView(M3.spacer(this, 12));
+
+        Button devButton = M3.tonalButton(this, "Testar sem servidor (modo dev)");
+        devButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                store.setEndpoint(TokenStore.DEV_ENDPOINT);
+                store.setToken("DEV");
+                store.setOperator("dev");
+                openScan();
+            }
+        });
+        root.addView(devButton);
 
         scroll.addView(root);
         usernameField.requestFocus();

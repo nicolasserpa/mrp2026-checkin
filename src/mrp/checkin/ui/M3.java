@@ -14,6 +14,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewOutlineProvider;
+import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
@@ -57,6 +58,130 @@ public final class M3 {
     public static final int WARN = 0xFF735C00;
     public static final int WARN_CONTAINER = 0xFFFBE29D;
 
+    // ---- Paleta Material 3 dark (seed #6750A4, esquema oficial) -------------
+    public static final int DARK_PRIMARY = 0xFFD0BCFF;
+    public static final int DARK_ON_PRIMARY = 0xFF381E72;
+    public static final int DARK_PRIMARY_CONTAINER = 0xFF4F378B;
+    public static final int DARK_ON_PRIMARY_CONTAINER = 0xFFEADDFF;
+    public static final int DARK_SECONDARY = 0xFFCCC2DC;
+    public static final int DARK_ON_SECONDARY = 0xFF332D41;
+    public static final int DARK_SECONDARY_CONTAINER = 0xFF4A4458;
+    public static final int DARK_ON_SECONDARY_CONTAINER = 0xFFE8DEF8;
+    public static final int DARK_SURFACE = 0xFF141218;
+    public static final int DARK_SURFACE_CONTAINER = 0xFF211F26;
+    public static final int DARK_ON_SURFACE = 0xFFE6E0E9;
+    public static final int DARK_SURFACE_VARIANT = 0xFF49454F;
+    public static final int DARK_ON_SURFACE_VARIANT = 0xFFCAC4D0;
+    public static final int DARK_OUTLINE = 0xFF938F99;
+    public static final int DARK_OUTLINE_VARIANT = 0xFF49454F;
+    public static final int DARK_ERROR = 0xFFF2B8B5;
+    public static final int DARK_ON_ERROR = 0xFF601410;
+    public static final int DARK_ERROR_CONTAINER = 0xFF8C1D18;
+    public static final int DARK_ON_ERROR_CONTAINER = 0xFFF9DEDC;
+    public static final int DARK_SUCCESS = 0xFF7BD88F;
+    public static final int DARK_SUCCESS_CONTAINER = 0xFF0B3D1F;
+    public static final int DARK_ON_SUCCESS_CONTAINER = 0xFFB7F0C1;
+    public static final int DARK_WARN = 0xFFE7B009;
+    public static final int DARK_WARN_CONTAINER = 0xFF3E2F00;
+
+    // ---- Night -------------------------------------------------------------
+    /** True quando o sistema está em dark theme (Configuration.UI_MODE_NIGHT_YES). */
+    public static boolean isNight(Context context) {
+        int night = context.getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return night == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    // Resolvedores dinâmicos: devolvem a cor light ou dark conforme o uiMode.
+    // Fábricas abaixo e telas DEVEM usar estes em vez das constantes cruas.
+    public static int primary(Context c) {
+        return isNight(c) ? DARK_PRIMARY : PRIMARY;
+    }
+
+    public static int onPrimary(Context c) {
+        return isNight(c) ? DARK_ON_PRIMARY : ON_PRIMARY;
+    }
+
+    public static int primaryContainer(Context c) {
+        return isNight(c) ? DARK_PRIMARY_CONTAINER : PRIMARY_CONTAINER;
+    }
+
+    public static int onPrimaryContainer(Context c) {
+        return isNight(c) ? DARK_ON_PRIMARY_CONTAINER : ON_PRIMARY_CONTAINER;
+    }
+
+    public static int secondaryContainer(Context c) {
+        return isNight(c) ? DARK_SECONDARY_CONTAINER : SECONDARY_CONTAINER;
+    }
+
+    public static int onSecondaryContainer(Context c) {
+        return isNight(c) ? DARK_ON_SECONDARY_CONTAINER : ON_SECONDARY_CONTAINER;
+    }
+
+    public static int surface(Context c) {
+        return isNight(c) ? DARK_SURFACE : SURFACE;
+    }
+
+    public static int surfaceContainer(Context c) {
+        return isNight(c) ? DARK_SURFACE_CONTAINER : SURFACE_CONTAINER;
+    }
+
+    public static int onSurface(Context c) {
+        return isNight(c) ? DARK_ON_SURFACE : ON_SURFACE;
+    }
+
+    public static int surfaceVariant(Context c) {
+        return isNight(c) ? DARK_SURFACE_VARIANT : SURFACE_VARIANT;
+    }
+
+    public static int onSurfaceVariant(Context c) {
+        return isNight(c) ? DARK_ON_SURFACE_VARIANT : ON_SURFACE_VARIANT;
+    }
+
+    public static int outline(Context c) {
+        return isNight(c) ? DARK_OUTLINE : OUTLINE;
+    }
+
+    public static int outlineVariant(Context c) {
+        return isNight(c) ? DARK_OUTLINE_VARIANT : OUTLINE_VARIANT;
+    }
+
+    public static int error(Context c) {
+        return isNight(c) ? DARK_ERROR : ERROR;
+    }
+
+    public static int onError(Context c) {
+        return isNight(c) ? DARK_ON_ERROR : ON_ERROR;
+    }
+
+    public static int errorContainer(Context c) {
+        return isNight(c) ? DARK_ERROR_CONTAINER : ERROR_CONTAINER;
+    }
+
+    public static int onErrorContainer(Context c) {
+        return isNight(c) ? DARK_ON_ERROR_CONTAINER : ON_ERROR_CONTAINER;
+    }
+
+    public static int success(Context c) {
+        return isNight(c) ? DARK_SUCCESS : SUCCESS;
+    }
+
+    public static int successContainer(Context c) {
+        return isNight(c) ? DARK_SUCCESS_CONTAINER : SUCCESS_CONTAINER;
+    }
+
+    public static int onSuccessContainer(Context c) {
+        return isNight(c) ? DARK_ON_SUCCESS_CONTAINER : ON_SUCCESS_CONTAINER;
+    }
+
+    public static int warn(Context c) {
+        return isNight(c) ? DARK_WARN : WARN;
+    }
+
+    public static int warnContainer(Context c) {
+        return isNight(c) ? DARK_WARN_CONTAINER : WARN_CONTAINER;
+    }
+
     public static final int SCRIM = 0x99000000;
     public static final int SCRIM_SOFT = 0x66000000;
 
@@ -70,7 +195,15 @@ public final class M3 {
     public static final float SHAPE_FIELD = 12f;
 
     public static int dp(Context context, int n) {
-        return (int) (context.getResources().getDisplayMetrics().density * n);
+        return dpPx(context.getResources().getDisplayMetrics().density, n);
+    }
+
+    /**
+     * Conversão dp->px pura (arredonda para baixo, como sempre foi no app) —
+     * separada de {@link #dp(Context, int)} para poder ser testada na JVM.
+     */
+    public static int dpPx(float density, int dp) {
+        return (int) (density * dp);
     }
 
     // ---- Motion ------------------------------------------------------------
@@ -117,7 +250,7 @@ public final class M3 {
         TextView v = new TextView(context);
         v.setText(text);
         v.setTextSize(28);
-        v.setTextColor(ON_SURFACE);
+        v.setTextColor(onSurface(context));
         v.setTypeface(Typeface.DEFAULT_BOLD);
         return v;
     }
@@ -126,7 +259,7 @@ public final class M3 {
         TextView v = new TextView(context);
         v.setText(text);
         v.setTextSize(22);
-        v.setTextColor(ON_SURFACE);
+        v.setTextColor(onSurface(context));
         v.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         return v;
     }
@@ -135,14 +268,14 @@ public final class M3 {
         TextView v = new TextView(context);
         v.setText(text);
         v.setTextSize(16);
-        v.setTextColor(ON_SURFACE);
+        v.setTextColor(onSurface(context));
         v.setLineSpacing(0f, 1.1f);
         return v;
     }
 
     public static TextView label(Context context, String text) {
         TextView v = new TextView(context);
-        labelStyle(v, 12, ON_SURFACE_VARIANT, true);
+        labelStyle(v, 12, onSurfaceVariant(context), true);
         v.setText(text);
         v.setAllCaps(true);
         v.setLetterSpacing(0.08f);
@@ -165,7 +298,7 @@ public final class M3 {
         card.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(context, 16);
         card.setPadding(pad, pad, pad, pad);
-        card.setBackground(rounded(SURFACE_CONTAINER, SHAPE_CARD, context));
+        card.setBackground(rounded(surfaceContainer(context), SHAPE_CARD, context));
         return card;
     }
 
@@ -189,29 +322,30 @@ public final class M3 {
 
     public static Button filledButton(Context context, String text) {
         Button b = baseButton(context, text);
-        b.setTextColor(ON_PRIMARY);
-        b.setBackground(ripple(RIPPLE_ON_PRIMARY, rounded(PRIMARY, SHAPE_PILL, context)));
+        b.setTextColor(onPrimary(context));
+        b.setBackground(ripple(RIPPLE_ON_PRIMARY, rounded(primary(context), SHAPE_PILL, context)));
         return b;
     }
 
     public static Button tonalButton(Context context, String text) {
         Button b = baseButton(context, text);
-        b.setTextColor(ON_SECONDARY_CONTAINER);
-        b.setBackground(ripple(RIPPLE_ON_CONTAINER, rounded(SECONDARY_CONTAINER, SHAPE_PILL, context)));
+        b.setTextColor(onSecondaryContainer(context));
+        b.setBackground(ripple(RIPPLE_ON_CONTAINER,
+                rounded(secondaryContainer(context), SHAPE_PILL, context)));
         return b;
     }
 
     public static Button outlinedButton(Context context, String text) {
         Button b = baseButton(context, text);
-        b.setTextColor(PRIMARY);
-        GradientDrawable g = rounded(SURFACE, SHAPE_PILL, context);
-        g.setStroke(dp(context, 2), OUTLINE);
+        b.setTextColor(primary(context));
+        GradientDrawable g = rounded(surface(context), SHAPE_PILL, context);
+        g.setStroke(dp(context, 2), outline(context));
         b.setBackground(ripple(RIPPLE_ON_CONTAINER, g));
         return b;
     }
 
     public static Button textButton(Context context, String text) {
-        return textButton(context, text, PRIMARY);
+        return textButton(context, text, primary(context));
     }
 
     public static Button textButton(Context context, String text, int color) {
@@ -223,8 +357,8 @@ public final class M3 {
 
     public static Button errorButton(Context context, String text) {
         Button b = baseButton(context, text);
-        b.setTextColor(ON_ERROR);
-        b.setBackground(ripple(RIPPLE_ON_PRIMARY, rounded(ERROR, SHAPE_PILL, context)));
+        b.setTextColor(onError(context));
+        b.setBackground(ripple(RIPPLE_ON_PRIMARY, rounded(error(context), SHAPE_PILL, context)));
         return b;
     }
 
@@ -256,7 +390,7 @@ public final class M3 {
     private static void applyCursor(EditText field) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             GradientDrawable cursor = new GradientDrawable();
-            cursor.setColor(PRIMARY);
+            cursor.setColor(primary(field.getContext()));
             cursor.setBounds(0, 0, dp(field.getContext(), 2), dp(field.getContext(), 24));
             field.setTextCursorDrawable(cursor);
         }
@@ -266,20 +400,21 @@ public final class M3 {
         final EditText field = new EditText(context);
         field.setHint(hint);
         field.setTextSize(16);
-        field.setTextColor(ON_SURFACE);
-        field.setHintTextColor(ON_SURFACE_VARIANT);
+        field.setTextColor(onSurface(context));
+        field.setHintTextColor(onSurfaceVariant(context));
         field.setSingleLine(true);
         field.setMinHeight(dp(context, 56));
         field.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14));
         applyCursor(field);
-        final GradientDrawable bg = rounded(SURFACE, SHAPE_FIELD, context);
-        bg.setStroke(dp(context, 1), OUTLINE_VARIANT);
+        final GradientDrawable bg = rounded(surface(context), SHAPE_FIELD, context);
+        bg.setStroke(dp(context, 1), outlineVariant(context));
         field.setBackground(bg);
         field.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                bg.setStroke(dp(context, hasFocus ? 2 : 1),
-                        hasFocus ? PRIMARY : OUTLINE_VARIANT);
+                Context c = v.getContext();
+                bg.setStroke(dp(c, hasFocus ? 2 : 1),
+                        hasFocus ? primary(c) : outlineVariant(c));
             }
         });
         return field;
@@ -289,21 +424,22 @@ public final class M3 {
         final EditText field = new EditText(context);
         field.setHint(hint);
         field.setTextSize(16);
-        field.setTextColor(ON_SURFACE);
-        field.setHintTextColor(ON_SURFACE_VARIANT);
+        field.setTextColor(onSurface(context));
+        field.setHintTextColor(onSurfaceVariant(context));
         field.setMinLines(3);
         field.setGravity(Gravity.TOP | Gravity.START);
         field.setMinHeight(dp(context, 96));
         field.setPadding(dp(context, 16), dp(context, 14), dp(context, 16), dp(context, 14));
         applyCursor(field);
-        final GradientDrawable bg = rounded(SURFACE, SHAPE_FIELD, context);
-        bg.setStroke(dp(context, 1), OUTLINE_VARIANT);
+        final GradientDrawable bg = rounded(surface(context), SHAPE_FIELD, context);
+        bg.setStroke(dp(context, 1), outlineVariant(context));
         field.setBackground(bg);
         field.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                bg.setStroke(dp(context, hasFocus ? 2 : 1),
-                        hasFocus ? PRIMARY : OUTLINE_VARIANT);
+                Context c = v.getContext();
+                bg.setStroke(dp(c, hasFocus ? 2 : 1),
+                        hasFocus ? primary(c) : outlineVariant(c));
             }
         });
         return field;
@@ -315,15 +451,15 @@ public final class M3 {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(dp(context, 16), 0, dp(context, 4), 0);
-        final GradientDrawable bg = rounded(SURFACE, SHAPE_FIELD, context);
-        bg.setStroke(dp(context, 1), OUTLINE_VARIANT);
+        final GradientDrawable bg = rounded(surface(context), SHAPE_FIELD, context);
+        bg.setStroke(dp(context, 1), outlineVariant(context));
         row.setBackground(bg);
 
         final EditText field = new EditText(context);
         field.setHint(hint);
         field.setTextSize(16);
-        field.setTextColor(ON_SURFACE);
-        field.setHintTextColor(ON_SURFACE_VARIANT);
+        field.setTextColor(onSurface(context));
+        field.setHintTextColor(onSurfaceVariant(context));
         field.setSingleLine(true);
         field.setMinHeight(dp(context, 56));
         field.setBackgroundColor(Color.TRANSPARENT);
@@ -334,7 +470,7 @@ public final class M3 {
                 LinearLayout.LayoutParams.MATCH_PARENT, 1f));
 
         final TextView toggle = new TextView(context);
-        labelStyle(toggle, 13, PRIMARY, true);
+        labelStyle(toggle, 13, primary(context), true);
         toggle.setText("Mostrar");
         toggle.setContentDescription("Mostrar senha");
         toggle.setGravity(Gravity.CENTER);
@@ -365,8 +501,9 @@ public final class M3 {
         field.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                bg.setStroke(dp(context, hasFocus ? 2 : 1),
-                        hasFocus ? PRIMARY : OUTLINE_VARIANT);
+                Context c = v.getContext();
+                bg.setStroke(dp(c, hasFocus ? 2 : 1),
+                        hasFocus ? primary(c) : outlineVariant(c));
             }
         });
         return row;
@@ -381,8 +518,8 @@ public final class M3 {
     public static ProgressBar spinner(Context context) {
         ProgressBar pb = new ProgressBar(context);
         pb.setIndeterminate(true);
-        pb.setIndeterminateTintList(ColorStateList.valueOf(PRIMARY));
-        pb.getIndeterminateDrawable().setColorFilter(PRIMARY, PorterDuff.Mode.SRC_IN);
+        pb.setIndeterminateTintList(ColorStateList.valueOf(primary(context)));
+        pb.getIndeterminateDrawable().setColorFilter(primary(context), PorterDuff.Mode.SRC_IN);
         return pb;
     }
 
@@ -392,7 +529,7 @@ public final class M3 {
         sheet.setOrientation(LinearLayout.VERTICAL);
         sheet.setPadding(dp(context, 20), dp(context, 20), dp(context, 20), dp(context, 20));
         GradientDrawable g = new GradientDrawable();
-        g.setColor(SURFACE);
+        g.setColor(surface(context));
         final float r = dp(context, 28);
         g.setCornerRadii(new float[]{r, r, 0, 0, 0, 0, 0, 0});
         sheet.setBackground(g);
@@ -414,25 +551,32 @@ public final class M3 {
                 new int[]{PRIMARY, OUTLINE});
     }
 
+    /** Variante night-aware de {@link #checkTint()}. */
+    public static ColorStateList checkTint(Context context) {
+        return new ColorStateList(
+                new int[][]{{android.R.attr.state_checked}, {}},
+                new int[]{primary(context), outline(context)});
+    }
+
     // ---- Bloco de sucesso (✓ grande) -------------------------------------
     public static LinearLayout successBlock(Context context) {
         LinearLayout block = new LinearLayout(context);
         block.setOrientation(LinearLayout.VERTICAL);
         block.setGravity(Gravity.CENTER);
         block.setPadding(dp(context, 16), dp(context, 16), dp(context, 16), dp(context, 12));
-        block.setBackground(rounded(SUCCESS_CONTAINER, SHAPE_CARD, context));
+        block.setBackground(rounded(successContainer(context), SHAPE_CARD, context));
 
-        TextView check = new TextView(context);
-        check.setText("\u2713");
-        check.setTextSize(56);
-        check.setTextColor(ON_SUCCESS_CONTAINER);
-        check.setGravity(Gravity.CENTER);
-        check.setTypeface(Typeface.DEFAULT_BOLD);
-        block.addView(check);
+        CheckBadge check = new CheckBadge(context, onSuccessContainer(context));
+        int badgeDp = 72;
+        android.widget.LinearLayout.LayoutParams checkLp =
+                new android.widget.LinearLayout.LayoutParams(
+                        dp(context, badgeDp), dp(context, badgeDp));
+        checkLp.gravity = Gravity.CENTER_HORIZONTAL;
+        block.addView(check, checkLp);
 
         TextView caption = new TextView(context);
         caption.setText("Confirmado");
-        labelStyle(caption, 14, ON_SUCCESS_CONTAINER, true);
+        labelStyle(caption, 14, onSuccessContainer(context), true);
         caption.setAllCaps(false);
         caption.setLetterSpacing(0f);
         caption.setGravity(Gravity.CENTER);
@@ -440,29 +584,228 @@ public final class M3 {
         return block;
     }
 
-    // ---- Insets -----------------------------------------------------------
-    /** Aplica o inset de status bar a um paddingTop base (scroll/root). */
-    public static void edgeToEdgeTop(final View view, final int baseTopDp) {
+    // ---- Insets (edge-to-edge sem androidx) --------------------------------
+    // Defeito corrigido: botões interativos atrás da navbar / zona de gesto
+    // "home". A solução NÃO bifurca "3 botões x gesto por swipe": resolve por
+    // matemática de insets, que vale para os dois casos, e o maior valor
+    // (tappableElement) é justamente o que garante que o controle não caia na
+    // faixa de gesto.
+    // API 30+: WindowInsets.Type.navigationBars()/systemGestures()/
+    // tappableElement()/displayCutout()/ime(). Abaixo de 30: só existe o
+    // getSystemWindowInset* (deprecado), que já vem como o pior caso.
+
+    /**
+     * Área (em px) onde a UI não pode encostar, já resolvida.
+     *
+     * <ul>
+     *   <li>{@link #left}/{@link #right}: lateral completa (navbar + zona de
+     *       gesto + cutout). É o que um controle INTERATIVO encostado na borda
+     *       precisa — a faixa de gesto lateral roubaria o toque dele.
+     *   <li>{@link #contentSide}: lateral simétrica só com barra + cutout (o
+     *       equivalente ao safeDrawing do framework). Conteúdo de tela cheia
+     *       usa esta: reservar a faixa de gesto também em portrait deixaria as
+     *       telas de formulário estreitas em quase todo aparelho com gesto.
+     * </ul>
+     * top/bottom já vêm com gesto e teclado embutidos.
+     */
+    public static final class SafeArea {
+        public final int left;
+        public final int top;
+        public final int right;
+        public final int bottom;
+        /** Lateral de conteúdo, simétrica (navbar + cutout, sem zona de gesto). */
+        public final int contentSide;
+
+        SafeArea(int left, int top, int right, int bottom, int contentSide) {
+            this.left = left;
+            this.top = top;
+            this.right = right;
+            this.bottom = bottom;
+            this.contentSide = contentSide;
+        }
+    }
+
+    /**
+     * Inset de baixo: maior entre navbar, zona de gesto e elemento clicável —
+     * e nunca menor que o teclado (IME), senão o botão de envio fica coberto.
+     * Sem bifurcação por tipo de navegação: os valores competem entre si.
+     *
+     * @param extraGapPx respiro adicional entre o controle e a barra (px, >= 0)
+     */
+    public static int computeBottomInset(int navBar, int systemGestures, int tappable,
+                                         int extraGapPx) {
+        return computeBottomInset(navBar, systemGestures, tappable, 0, extraGapPx);
+    }
+
+    /** Igual a {@link #computeBottomInset(int, int, int, int)} considerando o IME. */
+    public static int computeBottomInset(int navBar, int systemGestures, int tappable,
+                                         int ime, int extraGapPx) {
+        int base = Math.max(Math.max(px(navBar), px(systemGestures)), px(tappable));
+        base = Math.max(base, px(ime));
+        return base + px(extraGapPx);
+    }
+
+    /** Lado: navbar na lateral, gesto de ida e volta e cutout (notch). */
+    public static int computeSideInset(int navBar, int gesture, int cutout) {
+        return Math.max(Math.max(px(navBar), px(gesture)), px(cutout));
+    }
+
+    /**
+     * Versão simétrica (maior dos dois lados), para containers cujo padding
+     * horizontal é igual nos dois lados — o conteúdo sai dos dois cantos
+     * incômodos com uma conta só. Passe 0 nos gestos para a versão só de
+     * barra/cutout (padding de conteúdo).
+     */
+    public static int computeSideInset(int navBarLeft, int gestureLeft, int cutoutLeft,
+                                       int navBarRight, int gestureRight, int cutoutRight) {
+        return Math.max(computeSideInset(navBarLeft, gestureLeft, cutoutLeft),
+                computeSideInset(navBarRight, gestureRight, cutoutRight));
+    }
+
+    /** Topo: status bar ou display cutout (notch) — vence o maior. */
+    public static int computeTopInset(int statusBar, int cutout) {
+        return Math.max(px(statusBar), px(cutout));
+    }
+
+    private static int px(int value) {
+        return value > 0 ? value : 0;
+    }
+
+    /**
+     * Lê o WindowInsets real e devolve a SafeArea resolvida (px). Envolve as
+     * funções puras acima — a matemática é testável na JVM, a leitura não.
+     */
+    public static SafeArea safeArea(WindowInsets insets) {
+        if (insets == null) {
+            return new SafeArea(0, 0, 0, 0, 0);
+        }
+        int navL, navT, navR, navB;
+        int gesL, gesR, gesB;
+        int tapB, imeB;
+        int cutL, cutT, cutR;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            android.graphics.Insets nav = insets.getInsets(WindowInsets.Type.navigationBars());
+            navL = nav.left;
+            navT = nav.top;
+            navR = nav.right;
+            navB = nav.bottom;
+            android.graphics.Insets gestures =
+                    insets.getInsets(WindowInsets.Type.systemGestures());
+            gesL = gestures.left;
+            gesR = gestures.right;
+            gesB = gestures.bottom;
+            tapB = insets.getInsets(WindowInsets.Type.tappableElement()).bottom;
+            imeB = insets.getInsets(WindowInsets.Type.ime()).bottom;
+            android.graphics.Insets cutout =
+                    insets.getInsets(WindowInsets.Type.displayCutout());
+            cutL = cutout.left;
+            cutT = cutout.top;
+            cutR = cutout.right;
+        } else {
+            navL = insets.getSystemWindowInsetLeft();
+            navT = insets.getSystemWindowInsetTop();
+            navR = insets.getSystemWindowInsetRight();
+            navB = insets.getSystemWindowInsetBottom();
+            // Pré-30 não separa navbar de gesto: o systemWindowInset JÁ é o pior
+            // caso e ainda inclui o teclado quando ele abre.
+            gesL = navL;
+            gesR = navR;
+            gesB = navB;
+            tapB = 0;
+            imeB = 0;
+            cutL = 0;
+            cutT = 0;
+            cutR = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                    && insets.getDisplayCutout() != null) {
+                android.view.DisplayCutout cut = insets.getDisplayCutout();
+                cutL = cut.getSafeInsetLeft();
+                cutT = cut.getSafeInsetTop();
+                cutR = cut.getSafeInsetRight();
+            }
+        }
+        return new SafeArea(
+                computeSideInset(navL, gesL, cutL),
+                computeTopInset(navT, cutT),
+                computeSideInset(navR, gesR, cutR),
+                computeBottomInset(navB, gesB, tapB, imeB, 0),
+                // Conteúdo: sem a faixa de gesto (0) — maior barra/cutout dos dois lados.
+                computeSideInset(navL, 0, cutL, navR, 0, cutR));
+    }
+
+    /**
+     * Padding = base(dp) + inset resolvido nas 4 bordas, reaplicado a cada
+     * mudança (teclado, rotação, navbar que aparece some). Lateral simétrica
+     * (contentSide) porque os containers de tela cheia são de padding igual
+     * nos dois lados.
+     */
+    public static void edgeToEdge(final View view, final int baseTopDp, final int baseBottomDp,
+                                  final int baseSideDp) {
         view.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
-            public android.view.WindowInsets onApplyWindowInsets(View v,
-                                                                 android.view.WindowInsets insets) {
-                int base = dp(v.getContext(), baseTopDp);
-                int left = v.getPaddingLeft();
-                int bottom = v.getPaddingBottom();
-                int right = v.getPaddingRight();
-                v.setPadding(left, base + insets.getSystemWindowInsetTop(), right, bottom);
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                SafeArea sa = safeArea(insets);
+                Context c = v.getContext();
+                v.setPadding(dp(c, baseSideDp) + sa.contentSide,
+                        dp(c, baseTopDp) + sa.top,
+                        dp(c, baseSideDp) + sa.contentSide,
+                        dp(c, baseBottomDp) + sa.bottom);
                 return insets;
             }
         });
     }
 
+    /**
+     * Barras de sistema na cor de superfície do tema vigente.
+     * No night usa superfície escura com ícones claros (limpa as flags
+     * LIGHT_*); no light mantém o comportamento anterior.
+     */
     public static void surfaceSystemBars(android.app.Activity activity) {
-        activity.getWindow().setStatusBarColor(SURFACE);
-        activity.getWindow().setNavigationBarColor(SURFACE);
+        boolean night = isNight(activity);
+        int bar = night ? DARK_SURFACE : SURFACE;
+        activity.getWindow().setStatusBarColor(bar);
+        activity.getWindow().setNavigationBarColor(bar);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            activity.getWindow().getDecorView()
-                    .setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            View decor = activity.getWindow().getDecorView();
+            int flags = decor.getSystemUiVisibility();
+            if (night) {
+                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (android.os.Build.VERSION.SDK_INT
+                        >= android.os.Build.VERSION_CODES.O) {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                }
+            } else {
+                flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                if (android.os.Build.VERSION.SDK_INT
+                        >= android.os.Build.VERSION_CODES.O) {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                }
+            }
+            decor.setSystemUiVisibility(flags);
+        }
+    }
+
+    /**
+     * Barras sobre overlay escuro de câmera (Scan): status translúcido escuro
+     * com ícones claros sempre; navegação segue o tema para não sumir o
+     * gestual em aparelhos com botões.
+     */
+    public static void darkOverlaySystemBars(android.app.Activity activity, int statusColor) {
+        activity.getWindow().setStatusBarColor(statusColor);
+        activity.getWindow().setNavigationBarColor(
+                isNight(activity) ? DARK_SURFACE : SURFACE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            View decor = activity.getWindow().getDecorView();
+            int flags = decor.getSystemUiVisibility()
+                    & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (isNight(activity)) {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                } else {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                }
+            }
+            decor.setSystemUiVisibility(flags);
         }
     }
 }

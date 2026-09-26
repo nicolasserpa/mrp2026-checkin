@@ -10,6 +10,7 @@ import android.view.animation.OvershootInterpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 public final class ResultSheet {
@@ -22,6 +23,8 @@ public final class ResultSheet {
     }
 
     private final LinearLayout root;
+    private final ScrollView scroller;
+    private final LinearLayout content;
     private final TextView badge;
     private final LinearLayout successBlock;
     private final TextView title;
@@ -37,63 +40,84 @@ public final class ResultSheet {
 
     public ResultSheet(Context context, Actions actions) {
         root = M3.sheet(context);
+        // Inset resolvido (navbar OU zona de gesto OU teclado; lateral em
+        // paisagem) — o getSystemWindowInsetBottom() sozinho deixava o botão
+        // primário atrás da barra de 3 botões e sob a faixa de "home".
         root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-                int bottom = insets.getSystemWindowInsetBottom();
-                v.setPadding(M3.dp(context, 20), M3.dp(context, 20),
-                        M3.dp(context, 20), M3.dp(context, 20) + bottom);
+                M3.SafeArea sa = M3.safeArea(insets);
+                v.setPadding(M3.dp(context, 20) + sa.left, M3.dp(context, 20),
+                        M3.dp(context, 20) + sa.right, M3.dp(context, 20) + sa.bottom);
                 return insets;
             }
         });
+
+        // Conteúdo rolável: em portrait comporta-se como WRAP_CONTENT; em
+        // paisagem a activity limita a altura via setMaxHeight() e a ficha
+        // rola em vez de estourar a tela.
+        scroller = new ScrollView(context);
+        scroller.setFillViewport(true);
+        scroller.setVerticalScrollBarEnabled(false);
+        scroller.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+        root.addView(scroller, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroller.addView(content, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
 
         badge = new TextView(context);
         LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         badgeLp.gravity = Gravity.CENTER_HORIZONTAL;
         badgeLp.bottomMargin = M3.dp(context, 8);
-        root.addView(badge, badgeLp);
+        content.addView(badge, badgeLp);
 
         successBlock = M3.successBlock(context);
         LinearLayout.LayoutParams successLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         successLp.bottomMargin = M3.dp(context, 14);
         successBlock.setVisibility(View.GONE);
-        root.addView(successBlock, successLp);
+        content.addView(successBlock, successLp);
 
         title = new TextView(context);
         title.setTextSize(26);
-        title.setTextColor(M3.ON_SURFACE);
+        title.setTextColor(M3.onSurface(context));
         title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         title.setPadding(0, 0, 0, M3.dp(context, 10));
-        root.addView(title);
+        content.addView(title);
 
         progress = M3.spinner(context);
         progress.setPadding(0, M3.dp(context, 6), 0, M3.dp(context, 6));
         progress.setVisibility(View.GONE);
-        root.addView(progress, new LinearLayout.LayoutParams(
+        content.addView(progress, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         row1Label = M3.label(context, "Equipe");
-        root.addView(row1Label);
+        content.addView(row1Label);
         row1Value = new TextView(context);
         row1Value.setTextSize(18);
-        row1Value.setTextColor(M3.ON_SURFACE);
-        row1Value.setPadding(0, 0, 0, M3.dp(context, 8));
-        root.addView(row1Value);
+        row1Value.setTextColor(M3.onSurface(context));
+        row1Value.setPadding(0, 0, 0, M3.dp(context, 10));
+        content.addView(row1Value);
 
         row2Label = M3.label(context, "Conformidade");
-        root.addView(row2Label);
+        content.addView(row2Label);
         row2Value = new TextView(context);
         row2Value.setTextSize(18);
-        row2Value.setTextColor(M3.ON_SURFACE);
-        root.addView(row2Value);
+        row2Value.setTextColor(M3.onSurface(context));
+        row2Value.setPadding(0, 0, 0, M3.dp(context, 4));
+        content.addView(row2Value);
 
         status = new TextView(context);
         status.setTextSize(16);
         status.setGravity(Gravity.CENTER);
         status.setPadding(0, M3.dp(context, 14), 0, M3.dp(context, 14));
-        root.addView(status);
+        content.addView(status);
 
         presenceButton = M3.filledButton(context, "Registrar presença");
         presenceButton.setOnClickListener(new View.OnClickListener() {
@@ -102,7 +126,7 @@ public final class ResultSheet {
                 actions.onPresence();
             }
         });
-        root.addView(presenceButton);
+        content.addView(presenceButton, buttonLp(context, RESULT_BUTTON_GAP_DP));
 
         conformityButton = M3.filledButton(context, "Conformidade técnica");
         conformityButton.setOnClickListener(new View.OnClickListener() {
@@ -111,7 +135,7 @@ public final class ResultSheet {
                 actions.onConformity();
             }
         });
-        root.addView(conformityButton);
+        content.addView(conformityButton, buttonLp(context, RESULT_BUTTON_GAP_DP));
 
         rescanButton = M3.tonalButton(context, "Escanear novamente");
         rescanButton.setOnClickListener(new View.OnClickListener() {
@@ -120,25 +144,51 @@ public final class ResultSheet {
                 actions.onRescan();
             }
         });
-        root.addView(rescanButton);
+        content.addView(rescanButton, buttonLp(context, RESULT_BUTTON_GAP_DP));
+    }
+
+    /** Espaço vertical entre botões adjacentes da ficha (regressão: sem isso eles encostam). */
+    public static final int RESULT_BUTTON_GAP_DP = 12;
+
+    private static LinearLayout.LayoutParams buttonLp(Context context, int topMarginDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = M3.dp(context, topMarginDp);
+        return lp;
     }
 
     public View root() {
         return root;
     }
 
+    /**
+     * Limita a altura rolável da ficha (paisagem). <= 0 restaura WRAP_CONTENT.
+     */
+    public void setMaxHeight(int maxHeightPx) {
+        LinearLayout.LayoutParams lp =
+                (LinearLayout.LayoutParams) scroller.getLayoutParams();
+        if (maxHeightPx > 0) {
+            lp.height = maxHeightPx;
+        } else {
+            lp.height = LinearLayout.LayoutParams.WRAP_CONTENT;
+        }
+        scroller.setLayoutParams(lp);
+        scroller.requestLayout();
+    }
+
     /** Texto e estilo do botão reserva (escaneia de novo ou tenta de novo). */
     public void setRescanLabel(String label, boolean primary) {
+        Context c = rescanButton.getContext();
         rescanButton.setText(label);
         if (primary) {
             rescanButton.setBackground(M3.ripple(M3.RIPPLE_ON_PRIMARY,
-                    M3.rounded(M3.PRIMARY, M3.SHAPE_PILL, rescanButton.getContext())));
-            rescanButton.setTextColor(M3.ON_PRIMARY);
+                    M3.rounded(M3.primary(c), M3.SHAPE_PILL, c)));
+            rescanButton.setTextColor(M3.onPrimary(c));
         } else {
             rescanButton.setBackground(M3.ripple(M3.RIPPLE_ON_CONTAINER,
-                    M3.rounded(M3.SECONDARY_CONTAINER, M3.SHAPE_PILL,
-                            rescanButton.getContext())));
-            rescanButton.setTextColor(M3.ON_SECONDARY_CONTAINER);
+                    M3.rounded(M3.secondaryContainer(c), M3.SHAPE_PILL, c)));
+            rescanButton.setTextColor(M3.onSecondaryContainer(c));
         }
         rescanButton.requestLayout();
     }
@@ -170,7 +220,9 @@ public final class ResultSheet {
     }
 
     public void showParticipant(String name, String team, String role) {
-        setBadge("Participante confirmado", M3.SUCCESS_CONTAINER, M3.ON_SUCCESS_CONTAINER);
+        Context c = root.getContext();
+        setBadge("Participante confirmado",
+                M3.successContainer(c), M3.onSuccessContainer(c));
         showSuccessBlock(true);
         title.setText(name);
         row1Label.setText("Equipe");
@@ -187,7 +239,9 @@ public final class ResultSheet {
     }
 
     public void showVehicle(String name, String team, String conformityStatus) {
-        setBadge("Veículo confirmado", M3.SUCCESS_CONTAINER, M3.ON_SUCCESS_CONTAINER);
+        Context c = root.getContext();
+        setBadge("Veículo confirmado",
+                M3.successContainer(c), M3.onSuccessContainer(c));
         showSuccessBlock(true);
         title.setText(name);
         row1Label.setText("Equipe");
@@ -204,7 +258,8 @@ public final class ResultSheet {
     }
 
     public void setWaiting(String message) {
-        setBadge("Verificando", M3.SURFACE_VARIANT, M3.ON_SURFACE_VARIANT);
+        Context c = root.getContext();
+        setBadge("Verificando", M3.surfaceVariant(c), M3.onSurfaceVariant(c));
         showSuccessBlock(false);
         title.setText("");
         showRows(false);
@@ -216,14 +271,16 @@ public final class ResultSheet {
     }
 
     public void showError(String message, String reason) {
-        setBadge(reason == null ? "Erro" : reason, M3.ERROR_CONTAINER, M3.ON_ERROR_CONTAINER);
+        Context c = root.getContext();
+        setBadge(reason == null ? "Erro" : reason,
+                M3.errorContainer(c), M3.onErrorContainer(c));
         showSuccessBlock(false);
         title.setText("");
         showRows(false);
         progress.setVisibility(View.GONE);
         status.setVisibility(View.VISIBLE);
         status.setText(message);
-        status.setTextColor(M3.ERROR);
+        status.setTextColor(M3.error(c));
         presenceButton.setVisibility(View.GONE);
         conformityButton.setVisibility(View.GONE);
         rescanButton.setVisibility(View.VISIBLE);
@@ -231,9 +288,10 @@ public final class ResultSheet {
     }
 
     public void setPresenceResult(boolean duplicate, String lastSeenAt) {
+        Context c = root.getContext();
         progress.setVisibility(View.GONE);
         status.setVisibility(View.VISIBLE);
-        status.setTextColor(duplicate ? M3.WARN : M3.SUCCESS);
+        status.setTextColor(duplicate ? M3.warn(c) : M3.success(c));
         status.setText(duplicate
                 ? "Presença já registrada anteriormente nesta sessão.\n" + lastSeenAt
                 : "Presença registrada com sucesso.\n" + lastSeenAt);
@@ -241,6 +299,16 @@ public final class ResultSheet {
     }
 
     public void showIdle() {
+        showIdle(null);
+    }
+
+    /**
+     * Fecha a ficha e avisa quando ela ficou realmente GONE. O callback é
+     * essencial: durante o fade-out a ficha ainda está visível, então quem
+     * consulta isVisible()logo após showIdle() ainda a enxerga aberta.
+     * Sem isso, a lanterna era escondida e nunca voltava.
+     */
+    public void showIdle(final Runnable onHidden) {
         root.animate().cancel();
         if (isVisible() && M3.motionEnabled(root.getContext())) {
             root.animate().alpha(0f).setDuration(140)
@@ -249,12 +317,18 @@ public final class ResultSheet {
                         @Override
                         public void run() {
                             root.setVisibility(View.GONE);
+                            if (onHidden != null) {
+                                onHidden.run();
+                            }
                         }
                     })
                     .start();
         } else {
             root.setVisibility(View.GONE);
             root.setAlpha(1f);
+            if (onHidden != null) {
+                onHidden.run();
+            }
         }
     }
 

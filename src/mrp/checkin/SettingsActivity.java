@@ -33,11 +33,14 @@ public class SettingsActivity extends Activity {
         store = new TokenStore(this);
 
         ScrollView scroll = new ScrollView(this);
+        scroll.setBackgroundColor(M3.surface(this));
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(20);
         root.setPadding(pad, dp(20), pad, dp(24));
-        M3.edgeToEdgeTop(scroll, 20);
+        // Topo 20dp + status bar; rodapé soma navbar/gesto/teclado (o teclado
+        // cobre o "Salvar"/"Testar conexão").
+        M3.edgeToEdge(scroll, 20, 0, 0);
 
         root.addView(M3.headline(this, "Ajustes"));
 
@@ -52,6 +55,7 @@ public class SettingsActivity extends Activity {
 
         LinearLayout endpointCard = M3.card(this);
         endpointCard.addView(M3.label(this, "Endpoint da API"));
+        endpointCard.addView(M3.spacer(this, 10));
         endpointField = M3.outlinedInput(this, "http://192.168.0.30:8000");
         endpointField.setText(store.getEndpoint());
         endpointField.setImeOptions(EditorInfo.IME_ACTION_DONE);
@@ -67,17 +71,9 @@ public class SettingsActivity extends Activity {
         });
         endpointCard.addView(endpointField);
 
-        endpointCard.addView(M3.spacer(this, 8));
-
-        TextView hint = M3.label(this, "IP ou hostname com porta. Ex.: http://192.168.0.30:8000");
-        hint.setAllCaps(false);
-        hint.setLetterSpacing(0f);
-        hint.setPadding(0, dp(4), 0, 0);
-        endpointCard.addView(hint);
-
         healthView = new TextView(this);
         healthView.setTextSize(13);
-        healthView.setTextColor(M3.ON_SURFACE_VARIANT);
+        healthView.setTextColor(M3.onSurfaceVariant(this));
         healthView.setPadding(0, dp(8), 0, 0);
         endpointCard.addView(healthView);
 
@@ -112,8 +108,9 @@ public class SettingsActivity extends Activity {
 
         LinearLayout sessionCard = M3.card(this);
         sessionCard.addView(M3.label(this, "Operador"));
+        sessionCard.addView(M3.spacer(this, 6));
         TextView operator = M3.body(this, store.getOperator() != null ? store.getOperator() : "—");
-        operator.setPadding(0, dp(2), 0, dp(8));
+        operator.setPadding(0, dp(2), 0, dp(12));
         sessionCard.addView(operator);
 
         Button logoutButton = M3.errorButton(this, "Sair (trocar de usuário)");
@@ -179,7 +176,7 @@ public class SettingsActivity extends Activity {
         version.setAllCaps(false);
         version.setLetterSpacing(0f);
         version.setGravity(Gravity.CENTER);
-        version.setTextColor(M3.ON_SURFACE_VARIANT);
+        version.setTextColor(M3.onSurfaceVariant(this));
         root.addView(version);
 
         scroll.addView(root);
@@ -219,8 +216,13 @@ public class SettingsActivity extends Activity {
             return;
         }
         store.setEndpoint(url);
+        if (store.isDev()) {
+            healthView.setText("Modo dev: sem servidor (simulado).");
+            healthView.setTextColor(M3.success(SettingsActivity.this));
+            return;
+        }
         healthView.setText("Testando…");
-        healthView.setTextColor(M3.ON_SURFACE_VARIANT);
+        healthView.setTextColor(M3.onSurfaceVariant(SettingsActivity.this));
         new ApiClient(store).get("/api/v1/health", false, new ApiClient.Callback() {
             @Override
             public void onResult(ApiClient.Result result) {
@@ -228,13 +230,13 @@ public class SettingsActivity extends Activity {
                     String status = result.object.optString("status", "?");
                     String db = result.object.optString("db", "?");
                     healthView.setText("Conectado (" + status + ", db=" + db + ").");
-                    healthView.setTextColor(M3.SUCCESS);
+                    healthView.setTextColor(M3.success(SettingsActivity.this));
                 } else if (result.errorKind() == ApiClient.ErrorKind.NETWORK) {
                     healthView.setText("Servidor inacessível. Confira IP/porta e Wi-Fi.");
-                    healthView.setTextColor(M3.ERROR);
+                    healthView.setTextColor(M3.error(SettingsActivity.this));
                 } else {
                     healthView.setText("Resposta inesperada do servidor. Confira o endereço.");
-                    healthView.setTextColor(M3.ERROR);
+                    healthView.setTextColor(M3.error(SettingsActivity.this));
                 }
             }
         });

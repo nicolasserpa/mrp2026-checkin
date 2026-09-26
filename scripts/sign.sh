@@ -19,7 +19,7 @@ fi
 : "${KEY_ALIAS:?Defina KEY_ALIAS ou rode scripts/keystore-create.sh}"
 
 INPUT="${1:-$ROOT/out/app-unsigned.apk}"
-OUTPUT="$ROOT/out/mrp-checkin-release.apk"
+OUTPUT="${2:-$ROOT/out/mrp-checkin-release.apk}"
 
 apksigner sign \
     --ks "$KEYSTORE_PATH" \
@@ -32,6 +32,19 @@ apksigner sign \
 
 apksigner verify --print-certs "$OUTPUT"
 
+DOWNLOAD_DIR="$HOME/storage/downloads"
+DOWNLOAD_NAME="$(basename "$OUTPUT")"
+if [ -d "$DOWNLOAD_DIR" ]; then
+    cp -f "$OUTPUT" "$DOWNLOAD_DIR/$DOWNLOAD_NAME"
+    SUM="$(md5sum "$DOWNLOAD_DIR/$DOWNLOAD_NAME" | cut -d' ' -f1)"
+    echo
+    echo "Copiado para: $DOWNLOAD_DIR/$DOWNLOAD_NAME"
+    echo "MD5: $SUM"
+else
+    echo
+    echo "AVISO: $DOWNLOAD_DIR nao existe. Rode 'termux-setup-storage' uma vez e copie o APK manualmente."
+fi
+
 echo
 echo "Assinado e verificado: $OUTPUT"
-echo "Instalar: cp \"$OUTPUT\" ~/storage/downloads/ && termux-open \"$OUTPUT\""
+echo "Instalar: termux-open ~/storage/downloads/$DOWNLOAD_NAME"

@@ -50,6 +50,10 @@ java -cp "$OUT/test-classes:$OUT/main-classes:$JUNIT:$HAMCREST:$ORGJSON:libs/zxi
     org.junit.runner.JUnitCore \
     mrp.checkin.core.LogTruncateTest \
     mrp.checkin.core.TokenStoreTest \
+    mrp.checkin.core.DevFixturesTest \
+    mrp.checkin.ScanActivityTorchPolicyTest \
+    mrp.checkin.TorchWiringSourceTest \
+    mrp.checkin.BottomInsetTest \
     mrp.checkin.core.ScanPhaseTest \
     mrp.checkin.core.VerifyParserTest \
     mrp.checkin.net.EndpointResolverTest \
