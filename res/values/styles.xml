@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Insets: a área segura (status bar, navbar, zona de gesto "home", cutout e
+     teclado) é resolvida em código por M3.safeArea()/M3.edgeToEdge() a partir
+     do WindowInsets real — NÃO por atributo de tema. Por isso este arquivo
+     deliberadamente não usa windowFullscreen, windowTranslucentStatus,
+     windowTranslucentNavigation nem fitsSystemWindows: nada aqui empurra
+     layout sob a barra. adjustResize continua (o teclado redimensiona a janela
+     e o inset de ime() é somado por cima). -->
 <resources>
     <style name="Theme.MRP" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:colorPrimary">@color/mrp_primary</item>

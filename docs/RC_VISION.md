@@ -11,8 +11,11 @@ Robolectric, paisagem.
   (`M3.surfaceSystemBars`). Scan usa overlay próprio (abaixo).
 - Tema no `styles.xml`: `forceDarkAllowed=false`, `adjustResize` (teclado não
   cobre o rodapé), status/nav SURFACE por padrão.
-- Insets de status via `M3.edgeToEdgeTop(...)` em Login/Ajustes/Check (sem
-  colisão com barra de status/notch).
+- Insets resolvidos em código por `M3.safeArea()` / `M3.edgeToEdge(...)`
+  (Login/Ajustes/Check/Setup): base = `max(navigationBars, systemGestures,
+  tappableElement, ime)` — o mesmo cálculo serve para navbar de 3 botões e
+  para o gesto "home", sem bifurcar. Rodapé dos formulários, botão primário da
+  ficha e lanterna do Scan nunca caem atrás da barra.
 
 ## Login
 

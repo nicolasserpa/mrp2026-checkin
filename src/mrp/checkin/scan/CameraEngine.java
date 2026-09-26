@@ -1,7 +1,6 @@
 package mrp.checkin.scan;
 
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -445,11 +444,13 @@ public final class CameraEngine {
         }
         previewSize = chooseOptimalSize(textureSizes, rotatedPreviewWidth, rotatedPreviewHeight,
                 maxPreviewWidth, maxPreviewHeight, largest);
-        int orientation = context.getResources().getConfiguration().orientation;
-        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            preview.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
-        } else {
+        // Proporção segue o swap sensor/display (Camera2Basic): com swap, o
+        // buffer chega girado e a view precisa do aspecto transposto — vale
+        // para portrait e landscape sem reabrir a câmera.
+        if (swappedDimensions) {
             preview.setAspectRatio(previewSize.getHeight(), previewSize.getWidth());
+        } else {
+            preview.setAspectRatio(previewSize.getWidth(), previewSize.getHeight());
         }
     }
 
@@ -523,6 +524,16 @@ public final class CameraEngine {
                 configureTransform(preview.getWidth(), preview.getHeight());
             }
         });
+    }
+
+    /**
+     * Reaplica o transform após rotação (90/270°) sem reabrir a câmera:
+     * torch, sessão de captura e estado de scan/retry da activity sobrevivem.
+     * Chamado pela activity em onConfigurationChanged.
+     */
+    public void refreshTransform() {
+        preview.requestLayout();
+        applyTransformNowAndAfterLayout();
     }
 
     private int getDisplayRotationEnum() {
