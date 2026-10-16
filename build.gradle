@@ -1,0 +1,5 @@
+// Build de topo: só fixa a versão do Android Gradle Plugin.
+// Toda configuração do app vive em app/build.gradle.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}

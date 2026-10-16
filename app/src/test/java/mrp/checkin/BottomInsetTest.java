@@ -133,7 +133,7 @@ public class BottomInsetTest {
     // --- trava de wiring: o bug era o caller, não a matemática -------------
     @Test
     public void fichaUsaInsetResolvidoEONaoSystemWindowInset() throws Exception {
-        String src = read("src/mrp/checkin/ui/ResultSheet.java");
+        String src = read("src/main/java/mrp/checkin/ui/ResultSheet.java");
         assertTrue("a ficha precisa do inset resolvido",
                 src.contains("M3.safeArea(insets)"));
         assertTrue("a ficha não pode voltar a ler o inset cru (não cobre a "
@@ -143,7 +143,7 @@ public class BottomInsetTest {
 
     @Test
     public void lanternaSomaInsetNaMargemInferior() throws Exception {
-        String src = read("src/mrp/checkin/ScanActivity.java");
+        String src = read("src/main/java/mrp/checkin/ScanActivity.java");
         assertTrue("margem inferior da lanterna tem de somar o inset resolvido",
                 src.contains("lp.bottomMargin = dp(FLOAT_BASE_MARGIN_DP) + bottomInset;"));
         assertTrue("layoutHint() precisa ser reavaliado com os insets novos",

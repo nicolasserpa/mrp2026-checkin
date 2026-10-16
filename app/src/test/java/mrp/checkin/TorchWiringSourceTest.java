@@ -22,8 +22,8 @@ import java.io.InputStream;
  * aconteça dentro do callback de showIdle, e não em chamada síncrona.
  */
 public class TorchWiringSourceTest {
-    private static final String SCAN_ACTIVITY = "src/mrp/checkin/ScanActivity.java";
-    private static final String RESULT_SHEET = "src/mrp/checkin/ui/ResultSheet.java";
+    private static final String SCAN_ACTIVITY = "src/main/java/mrp/checkin/ScanActivity.java";
+    private static final String RESULT_SHEET = "src/main/java/mrp/checkin/ui/ResultSheet.java";
 
     @Test
     public void resumeScanningReavaliaLanternaNoCallbackDaFicha()

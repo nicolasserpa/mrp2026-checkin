@@ -1,0 +1,91 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Paridade com o build CLI (scripts/build.sh, build-dev.sh):
+// - package mrp.checkin, versionCode 7, versionName 0.7.0
+// - minSdk 26 (sem multidex, sem desugaring), javac release 8
+// - ZXing via Maven na MESMA versão do jar vendorizado (3.5.3)
+// - flavor dev: package .dev + label "MRP Dev", instalável lado a lado
+// - release com R8 (minify + shrink): poda os decoders ZXing não usados
+//   (só QR é usado); sem Material/AppCompat — zero dependência de runtime
+//   além do ZXing (ver resposta-revisao-senior.txt).
+// Diferença deliberada vs CLI: targetSdk 34 (CLI usava 36 via aapt2 direto;
+// AGP 8.5.2 suporta compileSdk até 34; sem impacto p/ este app — sem FGS,
+// sem alarmes exatos, edge-to-edge já manual).
+def ksPath = System.getenv('KEYSTORE_PATH')
+def ksPass = System.getenv('KEYSTORE_PASS')
+def ksAlias = System.getenv('KEY_ALIAS')
+
+android {
+    namespace 'mrp.checkin'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'mrp.checkin'
+        minSdk 26
+        targetSdk 34
+        versionCode 7
+        versionName '0.7.0'
+    }
+
+    // Assinatura SOMENTE quando as env vars existem (mesmos nomes do
+    // scripts/sign.sh). Sem elas o release sai unsigned — compila e testa
+    // igual, só não instala. No CI a keystore vem dos secrets.
+    if (ksPath && ksPass && ksAlias) {
+        signingConfigs {
+            release {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksPass
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (ksPath && ksPass && ksAlias) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    flavorDimensions 'canal'
+    productFlavors {
+        prod {
+            dimension 'canal'
+        }
+        dev {
+            dimension 'canal'
+            applicationIdSuffix '.dev'
+            versionNameSuffix '-dev'
+            resValue 'string', 'app_name', 'MRP Dev'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    testOptions {
+        unitTests.all {
+            // Testes JUnit4 puros (sem Robolectric): sem import android.
+            testLogging { events 'failed' }
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.zxing:core:3.5.3'
+    testImplementation 'junit:junit:4.13.2'
+    // org.json é plataforma no APK; aqui é SÓ p/ os testes na JVM.
+    testImplementation 'org.json:json:20240303'
+}
