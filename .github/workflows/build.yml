@@ -25,11 +25,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar platform + build-tools
-        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+      - name: Android SDK (platform + build-tools)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --version
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
