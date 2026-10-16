@@ -28,8 +28,11 @@ jobs:
       - name: Android SDK (platform + build-tools)
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
           sdkmanager --version
-          yes | sdkmanager --licenses > /dev/null
+          # '|| true': com pipefail ligado, o 'yes' morre com SIGPIPE (141)
+          # quando o sdkmanager sai antes — não é erro real.
+          yes 2>/dev/null | sdkmanager --licenses > /dev/null || true
           sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
