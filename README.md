@@ -1,6 +1,6 @@
 # MRP2026 Check-In
 
-Leitor **Android nativo** (Java + ZXing, sem Gradle) para o check-in e
+Leitor **Android nativo** (Java + ZXing) para o check-in e
 credenciamento do **Mousetrap Racing 2026 — Projeto 7**. O app faz login de
 staff, escaneia o QR criptografado (credencial ou chassi), registra **presença**
 e **conformidade técnica** contra a API Django DRF (`/api/v1`).
@@ -8,20 +8,34 @@ e **conformidade técnica** contra a API Django DRF (`/api/v1`).
 Câmera nativa (Camera2): dispensa HTTPS/CA interna — o evento roda em HTTP puro
 de LAN (`http://<IP>:8000`), sem Caddy.
 
-## Build (Termux/Linux, CLI puro)
+## Build (Gradle + GitHub Actions)
+
+Build canônico: **GitHub Actions** (workflow `build`), fonte da verdade.
+Push em qualquer branch compila, roda os unit tests e publica os APKs como
+artifacts (baixe no navegador do celular e instale).
 
 ```bash
-pkg install openjdk-21 aapt2 aapt apksigner
-bash scripts/build.sh      # gera out/app-unsigned.apk (baixa android.jar + r8.jar em libs/)
+# Local (Linux/macOS com Android SDK; Termux não roda o AGP de forma confiável)
+export ANDROID_HOME=~/Android/Sdk
+./gradlew :app:testProdDebugUnitTest :app:testDevDebugUnitTest  # 12 classes, JVM pura
+./gradlew :app:assembleProdRelease :app:assembleDevRelease      # unsigned sem keystore
+```
+
+Flavors: `prod` (package `mrp.checkin`) e `dev` (package `mrp.checkin.dev`,
+label "MRP Dev", instalável lado a lado — substitui o antigo `build-dev.sh`).
+Release sai com R8 (`minifyEnabled` + `shrinkResources`); sem Material/AppCompat.
+
+Assinatura (uma vez por ambiente):
+```bash
 bash scripts/keystore-create.sh   # gera ~/.keys/mrp-release.jks + credenciais (fora do repo)
-bash scripts/sign.sh       # gera out/mrp-checkin-release.apk assinado e verificado
+# CI: cadastrar secrets KEYSTORE_BASE64 (base64 do .jks), KEYSTORE_PASS, KEY_ALIAS.
+# Sem secrets o release compila unsigned (não instala). scripts/sign.sh segue
+# disponível como helper de assinatura local.
 ```
 
-Instalador (o sign.sh já copia o APK assinado para ~/storage/downloads; requer termux-setup-storage uma vez):
-```bash
-bash scripts/sign.sh
-termux-open ~/storage/downloads/mrp-checkin-release.apk
-```
+Instalador: baixe o artifact `apks` da run do Actions no navegador do
+celular (vai para Download) e instale por cima da versão anterior (mesmo
+keystore, update sem perda):
 
 ## Requisitos do backend para LAN
 
